@@ -37,7 +37,9 @@ func (p YtDlp) ID() string {
 
 func (p YtDlp) Match(url string) bool {
 	return strings.HasPrefix(url, "https://www.youtube.com/") ||
-		strings.HasPrefix(url, "https://youtu.be/")
+		strings.HasPrefix(url, "https://youtu.be/") ||
+		strings.HasPrefix(url, "https://youtube.com/") ||
+		strings.HasPrefix(url, "https://m.youtube.com/")
 }
 
 const initCheckTimeout = time.Second * 10
