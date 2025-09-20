@@ -73,8 +73,9 @@ func (s *FeedService) createFeed() *feedcast.Feed {
 		explicit = feedcast.ExplicitTrue
 	}
 
-	categories := []feedcast.Category{
-		feedcast.NewCategory(s.cfg.FeedCategories[0], s.cfg.FeedCategories[1:]...),
+	var categories []feedcast.Category
+	if len(s.cfg.FeedCategories) > 0 {
+		categories = append(categories, feedcast.NewCategory(s.cfg.FeedCategories[0], s.cfg.FeedCategories[1:]...))
 	}
 	if len(s.cfg.FeedCategories2) > 0 {
 		categories = append(categories, feedcast.NewCategory(s.cfg.FeedCategories2[0], s.cfg.FeedCategories2[1:]...))
@@ -97,7 +98,6 @@ func (s *FeedService) createFeed() *feedcast.Feed {
 		WithAuthor(s.cfg.FeedAuthor).
 		WithLastBuildDate(now).
 		WithGenerator("Voxify " + config.Version() + " (github.com/ofstudio/voxify)")
-
 }
 
 // createItem creates a feed item from an episode entity.
