@@ -17,6 +17,7 @@ Just paste any video or podcast URL to get started!
 Perfect for creating your own podcast collection or listening to content offline.`
 
 	MsgDownloadStarted = "🔄 Started downloading podcast..."
+	MsgDownloadBusy    = "⏳ Another download is in progress. Please try again later..."
 	MsgDownloadSuccess = "✅ Podcast downloaded successfully!\n\n📖 **%s**"
 
 	// General error messages

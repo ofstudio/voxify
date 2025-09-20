@@ -97,6 +97,19 @@ func (h *Handlers) Url() bot.HandlerFunc {
 			Force:     false,
 		}
 
-		h.processor.In() <- request
+		select {
+		case h.processor.In() <- request:
+		default:
+			// Processor is busy
+			h.log.Info("[bot] processor is busy, request dropped", "request", request.LogValue())
+			// Send "busy" message
+			if _, err := b.SendMessage(ctx, &bot.SendMessageParams{
+				ChatID: update.Message.Chat.ID,
+				Text:   locales.MsgDownloadBusy,
+			}); err != nil {
+				h.log.Error("[bot] failed to send busy message",
+					"error", err.Error(), "chat", logChat(&update.Message.Chat))
+			}
+		}
 	}
 }
