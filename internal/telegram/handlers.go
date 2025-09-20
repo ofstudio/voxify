@@ -2,7 +2,6 @@ package telegram
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -20,10 +19,6 @@ type Handlers struct {
 	builder   Builder
 	settings  config.Settings
 }
-
-var (
-	errProcessorBusy = errors.New("processor is busy")
-)
 
 func NewHandlers(settings config.Settings, log *slog.Logger, processor Processor, builder Builder) *Handlers {
 	return &Handlers{
@@ -57,15 +52,14 @@ func (h *Handlers) CmdBuild() bot.HandlerFunc {
 		}
 
 		h.log.Info("[bot] build command received", "update_id", update.ID, "message", logMessage(update.Message))
-		err := h.builder.Build(ctx)
-		if err != nil {
+
+		msg := locales.MsgBuildSuccess
+		if err := h.builder.Build(ctx); err != nil {
+			msg = msgErr(err)
 			h.log.Error("[bot] failed to build podcast feed",
 				"error", err.Error(), "chat", logChat(&update.Message.Chat))
-			h.sendMessage(ctx, b, update.Message.Chat, locales.MsgBuildError)
-			return
 		}
-
-		h.sendMessage(ctx, b, update.Message.Chat, locales.MsgBuildSuccess)
+		h.sendMessage(ctx, b, update.Message.Chat, msg)
 	}
 }
 
@@ -82,26 +76,11 @@ func (h *Handlers) Url() bot.HandlerFunc {
 			Url:       update.Message.Text,
 			Force:     false,
 		}
-
-		msg := locales.MsgDownloadStarted
-		err := h.sendRequest(ctx, request)
-		// if the processor is busy
-		if errors.Is(err, errProcessorBusy) {
-			msg = locales.MsgDownloadBusy
-			h.log.Error("[bot] processor is busy, request dropped",
-				"request", request.LogValue())
-
-		}
-		// if there was another error
-		if err != nil {
-			msg = locales.MsgSomethingWentWrong
+		if err := h.sendRequest(ctx, request); err != nil {
 			h.log.Error("[bot] failed to queue request",
 				"error", err.Error(), "request", request.LogValue())
+			h.sendMessage(ctx, b, update.Message.Chat, msgErr(err))
 		}
-
-		// send response message
-		h.sendMessage(ctx, b, update.Message.Chat, msg)
-
 	}
 }
 
