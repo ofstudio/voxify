@@ -22,11 +22,6 @@ var (
 	EpisodeGetByOriginalURL = NewError(203, "failed to get episode by original URL")
 	ErrEpisodeCreate        = NewError(204, "failed to create episode")
 	ErrProcessGetByStatus   = NewError(205, "failed to get process by status")
-
-	// I/O errors
-
-	ErrDownloadDir = NewError(301, "download directory error")
-	ErrMoveFile    = NewError(303, "failed to move file")
 )
 
 type Error = struct {
