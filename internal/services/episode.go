@@ -2,8 +2,11 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"net/url"
+	"regexp"
 
 	"github.com/ofstudio/voxify/internal/config"
 	"github.com/ofstudio/voxify/internal/entities"
@@ -63,6 +66,10 @@ func (s *EpisodeService) Download(ctx context.Context, req entities.Request) (*e
 	if req.DownloadQuality == "" {
 		req.DownloadQuality = s.cfg.DownloadQuality
 	}
+	if err := s.validateRequest(&req); err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrInvalidRequest, err)
+	}
+
 	platform := s.findPlatform(req.Url)
 	if platform == nil {
 		return nil, ErrNoMatchingPlatform
@@ -93,6 +100,56 @@ func (s *EpisodeService) findPlatform(url string) Platform {
 		if p.Match(url) {
 			return p
 		}
+	}
+	return nil
+}
+
+// validateRequest validates the download request.
+func (s *EpisodeService) validateRequest(req *entities.Request) error {
+	if err := s.validateUrl(req.Url); err != nil {
+		return fmt.Errorf("url validation failed: %w", err)
+	}
+	if err := s.validateDownloadFormat(req.DownloadFormat); err != nil {
+		return fmt.Errorf("download format validation failed: %w", err)
+	}
+	if err := s.validateDownloadQuality(req.DownloadQuality); err != nil {
+		return fmt.Errorf("download quality validation failed: %w", err)
+	}
+	return nil
+}
+
+func (s *EpisodeService) validateUrl(href string) error {
+	u, err := url.Parse(href)
+	if err != nil {
+		return fmt.Errorf("invalid url: %w", err)
+	}
+
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return fmt.Errorf("unsupported url scheme: %s", u.Scheme)
+	}
+	return nil
+}
+
+func (s *EpisodeService) validateDownloadFormat(format entities.DownloadFormat) error {
+	if format == "" {
+		return errors.New("download format is empty")
+	}
+	for _, supported := range s.cfg.SupportedDownloadFormats {
+		if format == supported {
+			return nil
+		}
+	}
+	return fmt.Errorf("unsupported download format: %s", format)
+}
+
+var reSafeQuality = regexp.MustCompile(`^[0-9a-zA-Z-_]{1,32}$`)
+
+func (s *EpisodeService) validateDownloadQuality(quality string) error {
+	if quality == "" {
+		return errors.New("download quality is empty")
+	}
+	if !reSafeQuality.MatchString(quality) {
+		return fmt.Errorf("unsupported download quality: %s", quality)
 	}
 	return nil
 }

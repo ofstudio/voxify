@@ -44,18 +44,23 @@ func (suite *TestEpisodeServiceSuite) SetupSuite() {
 	suite.Require().NoError(err)
 
 	suite.cfg = &config.Settings{
-		DownloadDir:     suite.tempDir,
-		PublicDir:       suite.publicDir,
-		DownloadTimeout: 30 * time.Second,
-		DownloadFormat:  entities.DownloadMp3,
-		DownloadQuality: "192k",
+		DownloadDir:              suite.tempDir,
+		PublicDir:                suite.publicDir,
+		DownloadTimeout:          30 * time.Second,
+		DownloadFormat:           entities.DownloadMp3,
+		DownloadQuality:          "192k",
+		SupportedDownloadFormats: []entities.DownloadFormat{entities.DownloadMp3, entities.DownloadM4a},
 	}
 }
 
 // TearDownSuite is called once after the entire test suite runs
 func (suite *TestEpisodeServiceSuite) TearDownSuite() {
-	os.RemoveAll(suite.tempDir)
-	os.RemoveAll(suite.publicDir)
+	if err := os.RemoveAll(suite.tempDir); err != nil {
+		suite.Require().NoError(err)
+	}
+	if err := os.RemoveAll(suite.publicDir); err != nil {
+		suite.Require().NoError(err)
+	}
 }
 
 // SetupTest is called before each test method
@@ -372,6 +377,59 @@ func (suite *TestEpisodeServiceSuite) TestFindPlatform() {
 		suite.Error(err)
 		suite.Nil(result)
 		suite.Equal(ErrNoMatchingPlatform, err)
+	})
+}
+
+// Add tests for validateRequest
+func (suite *TestEpisodeServiceSuite) TestValidateRequest() {
+	// create a service instance explicitly to ensure cfg is applied
+	service := NewEpisodeService(suite.cfg, suite.log, suite.mockStore, suite.mockPlatform)
+
+	suite.Run("Success", func() {
+		req := entities.Request{
+			ID:              "req-success",
+			Url:             "https://example.com/video",
+			DownloadFormat:  entities.DownloadMp3,
+			DownloadQuality: "128k",
+		}
+		err := service.validateRequest(&req)
+		suite.NoError(err)
+	})
+
+	suite.Run("InvalidURL", func() {
+		req := entities.Request{
+			ID:              "req-bad-url",
+			Url:             "ht!tp://bad-url",
+			DownloadFormat:  entities.DownloadMp3,
+			DownloadQuality: "128k",
+		}
+		err := service.validateRequest(&req)
+		suite.Error(err)
+		suite.Contains(err.Error(), "url validation failed")
+	})
+
+	suite.Run("UnsupportedFormat", func() {
+		req := entities.Request{
+			ID:              "req-bad-format",
+			Url:             "https://example.com/video",
+			DownloadFormat:  entities.DownloadFormat("wav"),
+			DownloadQuality: "128k",
+		}
+		err := service.validateRequest(&req)
+		suite.Error(err)
+		suite.Contains(err.Error(), "download format validation failed")
+	})
+
+	suite.Run("UnsupportedQuality", func() {
+		req := entities.Request{
+			ID:              "req-bad-quality",
+			Url:             "https://example.com/video",
+			DownloadFormat:  entities.DownloadMp3,
+			DownloadQuality: ";rm -rf /",
+		}
+		err := service.validateRequest(&req)
+		suite.Error(err)
+		suite.Contains(err.Error(), "download quality validation failed")
 	})
 }
 

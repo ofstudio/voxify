@@ -31,8 +31,8 @@ type Settings struct {
 	PublicDir       string                  `env:"PUBLIC_DIR,required"`   // Path to public directory where feed and media files are stored
 	DownloadDir     string                  `env:"DOWNLOAD_DIR,required"` // Path to temporary download directory
 	DownloadTimeout time.Duration           `env:"DOWNLOAD_TIMEOUT"`      // Timeout for downloading media
-	DownloadFormat  entities.DownloadFormat `env:"DOWNLOAD_FORMAT"`       // Media download format by default (e.g., mp3, m4a)
-	DownloadQuality string                  `env:"DOWNLOAD_QUALITY"`      // Media download quality (e.g., 192k)
+	DownloadFormat  entities.DownloadFormat `env:"DOWNLOAD_FORMAT"`       // Media download format by default (mp3 or m4a)
+	DownloadQuality string                  `env:"DOWNLOAD_QUALITY"`      // Media download quality by default (e.g., 192k)
 	ThumbnailSize   int                     `env:"THUMBNAIL_SIZE"`        // Size of the square thumbnail to generate (in pixels)
 	YtDlpPath       string                  `env:"YT_DLP_PATH"`           // Path to yt-dlp executable
 	FFMpegPath      string                  `env:"FFMPEG_PATH"`           // Path to ffmpeg executable
@@ -48,4 +48,6 @@ type Settings struct {
 	FeedAuthor      string                  `env:"FEED_AUTHOR"`           // Author of the RSS feed
 	FeedLink        string                  `env:"FEED_LINK"`             // Link to the website of the RSS feed
 	FeedKeywords    string                  `env:"FEED_KEYWORDS"`         // Comma-separated keywords for the RSS feed
+
+	SupportedDownloadFormats []entities.DownloadFormat // Supported media download formats
 }

@@ -26,6 +26,11 @@ func Default() Config {
 			FeedImage:       "https://raw.githubusercontent.com/ofstudio/voxify/refs/heads/master/assets/voxify-cover-dark.png",
 			FeedLanguage:    "en",
 			FeedCategories:  []string{"Technology"},
+
+			SupportedDownloadFormats: []entities.DownloadFormat{
+				entities.DownloadMp3,
+				entities.DownloadM4a,
+			},
 		},
 	}
 }

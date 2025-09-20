@@ -13,6 +13,7 @@ var (
 	ErrEpisodeExists      = NewError(104, "episode already exists")
 	ErrProcessInterrupted = NewError(105, "process was interrupted")
 	ErrEmptyFeed          = NewError(106, "feed has no items")
+	ErrInvalidRequest     = NewError(107, "invalid download request")
 
 	// Store errors
 
