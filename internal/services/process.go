@@ -166,7 +166,7 @@ func (s *ProcessService) validate(ctx context.Context, process *entities.Process
 	}
 	existing, err := s.store.EpisodeGetByOriginalUrl(ctx, process.Request.Url)
 	if err != nil {
-		return fmt.Errorf("%w: %w", EpisodeGetByOriginalURL, err)
+		return fmt.Errorf("%w: %w", ErrEpisodeGetByOriginalURL, err)
 	}
 	if len(existing) > 0 {
 		return ErrEpisodeExists

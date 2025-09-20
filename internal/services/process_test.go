@@ -259,7 +259,7 @@ func (suite *TestProcessServiceSuite) TestValidate() {
 
 		// Assert
 		suite.Error(err)
-		suite.True(errors.Is(err, EpisodeGetByOriginalURL))
+		suite.True(errors.Is(err, ErrEpisodeGetByOriginalURL))
 	})
 }
 

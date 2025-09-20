@@ -17,11 +17,11 @@ var (
 
 	// Store errors
 
-	ErrProcessUpsert        = NewError(201, "failed to update process")
-	ErrProcessGetByURL      = NewError(202, "failed to get process by URL")
-	EpisodeGetByOriginalURL = NewError(203, "failed to get episode by original URL")
-	ErrEpisodeCreate        = NewError(204, "failed to create episode")
-	ErrProcessGetByStatus   = NewError(205, "failed to get process by status")
+	ErrProcessUpsert           = NewError(201, "failed to update process")
+	ErrProcessGetByURL         = NewError(202, "failed to get process by URL")
+	ErrEpisodeGetByOriginalURL = NewError(203, "failed to get episode by original URL")
+	ErrEpisodeCreate           = NewError(204, "failed to create episode")
+	ErrProcessGetByStatus      = NewError(205, "failed to get process by status")
 )
 
 type Error = struct {
