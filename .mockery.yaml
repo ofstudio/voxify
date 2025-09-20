@@ -1,0 +1,25 @@
+all: false
+dir: '{{.InterfaceDir}}'
+filename: '{{.InterfaceName | lower}}.go'
+structname: 'Mock{{.InterfaceName}}'
+pkgname: 'mocks'
+recursive: false
+packages:
+  github.com/ofstudio/voxify/internal/store:
+    config:
+      dir: './internal/mocks'
+    interfaces:
+      Store:
+  github.com/ofstudio/voxify/internal/services:
+    config:
+      dir: './internal/mocks'
+    interfaces:
+      Platform:
+      Downloader:
+      Builder:
+  github.com/ofstudio/voxify/internal/telegram:
+    config:
+      dir: './internal/mocks'
+    interfaces:
+      Processor:
+      Notifier:
