@@ -45,12 +45,3 @@ CREATE INDEX idx_processes_step ON processes (step);
 CREATE INDEX idx_processes_request_url ON processes (request_url);
 CREATE INDEX idx_processes_created_at ON processes (created_at);
 CREATE INDEX idx_processes_updated_at ON processes (updated_at);
-
--- Trigger to automatically update updated_at timestamp
-CREATE TRIGGER processes_updated_at
-    AFTER UPDATE
-    ON processes
-    FOR EACH ROW
-BEGIN
-    UPDATE processes SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
-END;
