@@ -28,6 +28,7 @@ type MediaType = feedcast.EnclosureType
 
 const (
 	MediaMp3 = feedcast.Mp3
+	MediaM4a = feedcast.M4a
 )
 
 // LogValue implements slog.LogValuer interface for automatic logging

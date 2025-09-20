@@ -251,4 +251,5 @@ type youtubeMeta struct {
 
 var mediaTypes = map[entities.DownloadFormat]entities.MediaType{
 	entities.DownloadMp3: entities.MediaMp3,
+	entities.DownloadM4a: entities.MediaM4a,
 }

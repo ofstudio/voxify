@@ -19,6 +19,7 @@ type DownloadFormat string
 
 const (
 	DownloadMp3 DownloadFormat = "mp3"
+	DownloadM4a DownloadFormat = "m4a"
 )
 
 // LogValue implements slog.LogValuer interface for automatic logging
