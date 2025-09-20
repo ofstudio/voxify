@@ -1,4 +1,4 @@
-![Voxify logo](assets//voxify-logo.svg)
+![Voxify logo](assets/voxify-logo.svg)
 
 # Voxify
 
@@ -82,7 +82,7 @@ Pre-built images are available at:
 - `ghcr.io/ofstudio/voxify:latest` - Latest stable release
 - `ghcr.io/ofstudio/voxify:v1.x.x` - Specific version tags
 
-Check [releases](https://github.com/ofstudio/voxify/releases) for the latest version.
+Check [packages](https://github.com/ofstudio/voxify/pkgs/container/voxify) for the latest version.
 
 ## Environment Variables
 
