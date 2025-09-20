@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/ofstudio/voxify/internal/config"
 	"github.com/ofstudio/voxify/internal/entities"
@@ -39,19 +40,24 @@ func (p YtDlp) Match(url string) bool {
 		strings.HasPrefix(url, "https://youtu.be/")
 }
 
+const initCheckTimeout = time.Second * 10
+
 // Init checks if yt-dlp and ffmpeg are available and working.
-func (p YtDlp) Init(_ context.Context) error {
+func (p YtDlp) Init(ctx context.Context) error {
 	if p.cfg.YtDlpPath == "" {
 		return fmt.Errorf("yt-dlp path is not configured")
 	}
 	if p.cfg.FFMpegPath == "" {
 		return fmt.Errorf("ffmpeg path is not configured")
 	}
-	cmd := exec.Command(p.cfg.FFMpegPath, "-version")
+	// Check if yt-dlp and ffmpeg are available
+	checkCtx, checkCancel := context.WithTimeout(ctx, initCheckTimeout)
+	defer checkCancel()
+	cmd := exec.CommandContext(checkCtx, p.cfg.FFMpegPath, "-version")
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("ffmpeg not found or not working: %w", err)
 	}
-	cmd = exec.Command(p.cfg.YtDlpPath, "--version")
+	cmd = exec.CommandContext(checkCtx, p.cfg.YtDlpPath, "--version")
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("yt-dlp not found or not working: %w", err)
 	}
