@@ -9,7 +9,10 @@ import (
 	"github.com/ofstudio/voxify/pkg/randtoken"
 )
 
-const notifyBuffer = 64
+const (
+	notifyBuffer   = 8 // Buffer size for the notify channel
+	workerPoolSize = 2 // Number of concurrent workers for processing requests
+)
 
 // ProcessService handles the processing of download requests.
 type ProcessService struct {
@@ -60,9 +63,7 @@ func (s *ProcessService) Init(ctx context.Context) error {
 				return fmt.Errorf("%w: %w", ErrProcessUpsert, err)
 			}
 			s.log.Info("[process service] process failed", "process", process.LogValue())
-			go func() {
-				s.notify <- process
-			}()
+			s.sendNotify(ctx, process)
 		}
 	}
 	return nil
@@ -70,20 +71,28 @@ func (s *ProcessService) Init(ctx context.Context) error {
 
 // Start begins processing download requests.
 // It runs until the provided context is canceled.
-// It returns an error if the downloader or builder functions are not set.
 func (s *ProcessService) Start(ctx context.Context) {
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case req := <-s.in:
-				req.ID = randtoken.New(10)
-				s.log.Info("[process service] received new request", "request", req.LogValue())
-				s.handle(ctx, req)
-			}
+	// Start multiple workers for better concurrency
+	for i := 0; i < workerPoolSize; i++ {
+		go s.worker(ctx, i)
+	}
+}
+
+// worker processes requests from the input channel
+func (s *ProcessService) worker(ctx context.Context, workerID int) {
+	s.log.Info("[process service] worker started", "worker_id", workerID)
+	defer s.log.Info("[process service] worker stopped", "worker_id", workerID)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case req := <-s.in:
+			req.ID = randtoken.New(10)
+			s.log.Info("[process service] received new request", "worker_id", workerID, "request", req.LogValue())
+			s.handle(ctx, req)
 		}
-	}()
+	}
 }
 
 // handle processes a single download request.
@@ -166,17 +175,32 @@ func (s *ProcessService) validate(ctx context.Context, process *entities.Process
 	return nil
 }
 
+// sendNotify sends a notification.
+func (s *ProcessService) sendNotify(ctx context.Context, process *entities.Process) {
+	select {
+	case s.notify <- process: // Successfully sent
+	case <-ctx.Done(): // Context canceled
+		s.log.Error("[process service] notification dropped due to context cancellation",
+			"process", process.LogValue())
+	default: // Channel full
+		s.log.Error("[process service] notification buffer full, dropping notification",
+			"process", process.LogValue())
+	}
+}
+
 // fail marks the process as failed with the given error and notifies via the notify channel.
 func (s *ProcessService) fail(ctx context.Context, process *entities.Process, e error) {
 	process.Status = entities.StatusFailed
 	process.Error = e
 	if err := s.store.ProcessUpsert(ctx, process); err != nil {
-		s.log.Error("[process service] failed to update process", "error", err, "process", process.LogValue())
+		s.log.Error("[process service] failed to update process",
+			"error", err, "process", process.LogValue())
 	}
-	s.log.Error("[process service] process failed", "process", process.LogValue())
+	s.log.Error("[process service] process failed",
+		"process", process.LogValue())
 
 	// Notify about process failure
-	s.notify <- process
+	s.sendNotify(ctx, process)
 }
 
 // update creates or updates the process in the store and notifies via the notify channel.
@@ -190,12 +214,14 @@ func (s *ProcessService) update(ctx context.Context, process *entities.Process) 
 	}
 
 	if created {
-		s.log.Info("[process service] process created", "process", process.LogValue())
+		s.log.Info("[process service] process created",
+			"process", process.LogValue())
 	} else {
-		s.log.Info("[process service] process updated", "process", process.LogValue())
+		s.log.Info("[process service] process updated",
+			"process", process.LogValue())
 	}
 
 	// Notify about process update
-	s.notify <- process
+	s.sendNotify(ctx, process)
 	return nil
 }
