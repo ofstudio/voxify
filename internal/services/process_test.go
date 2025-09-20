@@ -30,7 +30,9 @@ type TestProcessServiceSuite struct {
 // SetupSuite is called once before the entire test suite runs
 func (suite *TestProcessServiceSuite) SetupSuite() {
 	suite.ctx = context.Background()
-	suite.cfg = &config.Settings{}
+	suite.cfg = &config.Settings{
+		DownloadWorkers: 1, // Set to 1 for predictable test behavior
+	}
 	suite.log = slog.Default()
 }
 
@@ -40,13 +42,13 @@ func (suite *TestProcessServiceSuite) SetupSubTest() {
 	suite.mockDown = mocks.NewMockDownloader(suite.T())
 	suite.mockBuilder = mocks.NewMockBuilder(suite.T())
 
-	suite.service = NewProcessService(suite.log, suite.mockStore, suite.mockDown, suite.mockBuilder)
+	suite.service = NewProcessService(suite.cfg, suite.log, suite.mockStore, suite.mockDown, suite.mockBuilder)
 }
 
 // TestNewProcessService tests the constructor
 func (suite *TestProcessServiceSuite) TestNewProcessService() {
 	// Act
-	service := NewProcessService(suite.log, suite.mockStore, suite.mockDown, suite.mockBuilder)
+	service := NewProcessService(suite.cfg, suite.log, suite.mockStore, suite.mockDown, suite.mockBuilder)
 
 	// Assert
 	suite.NotNil(service)

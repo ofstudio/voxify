@@ -33,6 +33,7 @@ type Settings struct {
 	DownloadTimeout time.Duration           `env:"DOWNLOAD_TIMEOUT"`      // Timeout for downloading media
 	DownloadFormat  entities.DownloadFormat `env:"DOWNLOAD_FORMAT"`       // Media download format by default (mp3 or m4a)
 	DownloadQuality string                  `env:"DOWNLOAD_QUALITY"`      // Media download quality by default (e.g., 192k)
+	DownloadWorkers int                     `env:"DOWNLOAD_WORKERS"`      // Number of concurrent download workers
 	ThumbnailSize   int                     `env:"THUMBNAIL_SIZE"`        // Size of the square thumbnail to generate (in pixels)
 	YtDlpPath       string                  `env:"YT_DLP_PATH"`           // Path to yt-dlp executable
 	FFMpegPath      string                  `env:"FFMPEG_PATH"`           // Path to ffmpeg executable

@@ -43,7 +43,7 @@ func (a *App) Start(ctx context.Context) error {
 	var (
 		feedSrv    = services.NewFeedService(&a.cfg.Settings, a.log, st)
 		episodeSrv = services.NewEpisodeService(&a.cfg.Settings, a.log, st, ytDlp)
-		processSrv = services.NewProcessService(a.log, st, episodeSrv, feedSrv)
+		processSrv = services.NewProcessService(&a.cfg.Settings, a.log, st, episodeSrv, feedSrv)
 	)
 
 	// Initialize services

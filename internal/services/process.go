@@ -5,17 +5,18 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/ofstudio/voxify/internal/config"
 	"github.com/ofstudio/voxify/internal/entities"
 	"github.com/ofstudio/voxify/pkg/randtoken"
 )
 
 const (
-	notifyBuffer   = 8 // Buffer size for the notify channel
-	workerPoolSize = 2 // Number of concurrent workers for processing requests
+	notifyBuffer = 8 // Buffer size for the notify channel
 )
 
 // ProcessService handles the processing of download requests.
 type ProcessService struct {
+	cfg        *config.Settings
 	log        *slog.Logger
 	store      Store
 	downloader Downloader
@@ -25,8 +26,9 @@ type ProcessService struct {
 }
 
 // NewProcessService creates a new ProcessService instance.
-func NewProcessService(log *slog.Logger, store Store, downloader Downloader, builder Builder) *ProcessService {
+func NewProcessService(cfg *config.Settings, log *slog.Logger, store Store, downloader Downloader, builder Builder) *ProcessService {
 	return &ProcessService{
+		cfg:        cfg,
 		log:        log,
 		store:      store,
 		downloader: downloader,
@@ -73,7 +75,7 @@ func (s *ProcessService) Init(ctx context.Context) error {
 // It runs until the provided context is canceled.
 func (s *ProcessService) Start(ctx context.Context) {
 	// Start multiple workers for better concurrency
-	for i := 0; i < workerPoolSize; i++ {
+	for i := 0; i < s.cfg.DownloadWorkers; i++ {
 		go s.worker(ctx, i)
 	}
 }
