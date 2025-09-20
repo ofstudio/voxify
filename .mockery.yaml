@@ -17,9 +17,3 @@ packages:
       Platform:
       Downloader:
       Builder:
-  github.com/ofstudio/voxify/internal/telegram:
-    config:
-      dir: './internal/mocks'
-    interfaces:
-      Processor:
-      Notifier:

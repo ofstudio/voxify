@@ -60,7 +60,7 @@ func (a *App) Start(ctx context.Context) error {
 
 	// Initialize Telegram bot
 	middleware := telegram.NewMiddleware(a.cfg.Telegram, a.log)
-	handlers := telegram.NewHandlers(a.cfg.Settings, a.log, processSrv, feedSrv)
+	handlers := telegram.NewHandlers(a.cfg.Settings, a.log, processSrv.In(), feedSrv)
 
 	b, err := bot.New(a.cfg.Telegram.BotToken, []bot.Option{
 		bot.WithMiddlewares(middleware.WithAllowedUsers()),
@@ -74,7 +74,7 @@ func (a *App) Start(ctx context.Context) error {
 	b.RegisterHandler(bot.HandlerTypeMessageText, "build", bot.MatchTypeCommand, handlers.CmdBuild())
 	b.RegisterHandler(bot.HandlerTypeMessageText, "https://", bot.MatchTypePrefix, handlers.Url())
 
-	notifications := telegram.NewNotifications(b, processSrv, a.log)
+	notifications := telegram.NewNotifications(a.log, b, processSrv.Out())
 
 	// Start bot and notifications
 	ctxBot, cancelBot := context.WithCancel(ctx)

@@ -14,18 +14,18 @@ import (
 )
 
 type Handlers struct {
-	log       *slog.Logger
-	processor Processor
-	builder   Builder
-	settings  config.Settings
+	log     *slog.Logger
+	cfg     config.Settings
+	out     chan<- entities.Request
+	builder Builder
 }
 
-func NewHandlers(settings config.Settings, log *slog.Logger, processor Processor, builder Builder) *Handlers {
+func NewHandlers(cfg config.Settings, log *slog.Logger, out chan<- entities.Request, b Builder) *Handlers {
 	return &Handlers{
-		log:       log,
-		processor: processor,
-		builder:   builder,
-		settings:  settings,
+		log:     log,
+		cfg:     cfg,
+		builder: b,
+		out:     out,
 	}
 }
 
@@ -69,7 +69,7 @@ func (h *Handlers) Url() bot.HandlerFunc {
 			return
 		}
 		h.log.Info("[bot] url received", "update_id", update.ID, "url", update.Message.Text)
-		request := &entities.Request{
+		request := entities.Request{
 			UserID:    update.Message.From.ID,
 			ChatID:    update.Message.Chat.ID,
 			MessageID: update.Message.ID,
@@ -85,10 +85,10 @@ func (h *Handlers) Url() bot.HandlerFunc {
 }
 
 // sendRequest tries to send the request to the processor safely.
-func (h *Handlers) sendRequest(ctx context.Context, req *entities.Request) error {
+func (h *Handlers) sendRequest(ctx context.Context, req entities.Request) error {
 	select {
 	// if the request was successfully sent to the processor
-	case h.processor.In() <- req:
+	case h.out <- req:
 		return nil
 	// if the processor is busy (no worker available in 2 seconds)
 	case <-time.After(time.Second * 2):

@@ -13,17 +13,17 @@ import (
 
 // Notifications handles sending notifications to users about process updates.
 type Notifications struct {
-	bot      *bot.Bot
-	log      *slog.Logger
-	notifier Notifier
+	log *slog.Logger
+	bot *bot.Bot
+	in  <-chan entities.Process
 }
 
 // NewNotifications creates a new Notifications instance.
-func NewNotifications(bot *bot.Bot, notifier Notifier, log *slog.Logger) *Notifications {
+func NewNotifications(log *slog.Logger, bot *bot.Bot, in <-chan entities.Process) *Notifications {
 	return &Notifications{
-		bot:      bot,
-		log:      log,
-		notifier: notifier,
+		log: log,
+		bot: bot,
+		in:  in,
 	}
 }
 
@@ -33,9 +33,9 @@ func (n *Notifications) Start(ctx context.Context) {
 		for {
 			select {
 			case <-ctx.Done():
-				n.log.Info("bot notifications stopped")
+				n.log.Info("[bot] notifications stopped")
 				return
-			case process := <-n.notifier.Notify():
+			case process := <-n.in:
 				msg := n.getMessage(process)
 				n.replyMessage(ctx, process, msg)
 			}
@@ -43,7 +43,7 @@ func (n *Notifications) Start(ctx context.Context) {
 	}()
 }
 
-func (n *Notifications) getMessage(process *entities.Process) string {
+func (n *Notifications) getMessage(process entities.Process) string {
 	switch {
 	case process.Step == entities.StepDownloading && process.Status == entities.StatusInProgress:
 		return locales.MsgDownloadStarted
@@ -52,11 +52,11 @@ func (n *Notifications) getMessage(process *entities.Process) string {
 	case process.Status == entities.StatusFailed:
 		return msgErr(process.Error)
 	default:
-		return locales.MsgSomethingWentWrong
+		return ""
 	}
 }
 
-func (n *Notifications) getSuccessMessage(process *entities.Process) string {
+func (n *Notifications) getSuccessMessage(process entities.Process) string {
 	var title string
 	if process.Episode != nil {
 		title = process.Episode.Title
@@ -64,7 +64,7 @@ func (n *Notifications) getSuccessMessage(process *entities.Process) string {
 	return fmt.Sprintf(locales.MsgDownloadSuccess, title)
 }
 
-func (n *Notifications) replyMessage(ctx context.Context, process *entities.Process, text string) {
+func (n *Notifications) replyMessage(ctx context.Context, process entities.Process, text string) {
 	if text == "" {
 		// Ignore
 		return

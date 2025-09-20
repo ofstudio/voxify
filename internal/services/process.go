@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/ofstudio/voxify/internal/config"
 	"github.com/ofstudio/voxify/internal/entities"
@@ -21,8 +22,8 @@ type ProcessService struct {
 	store      Store
 	downloader Downloader
 	builder    Builder
-	in         chan *entities.Request
-	notify     chan *entities.Process
+	in         chan entities.Request
+	notify     chan entities.Process
 }
 
 // NewProcessService creates a new ProcessService instance.
@@ -33,18 +34,18 @@ func NewProcessService(cfg *config.Settings, log *slog.Logger, store Store, down
 		store:      store,
 		downloader: downloader,
 		builder:    builder,
-		in:         make(chan *entities.Request),
-		notify:     make(chan *entities.Process, notifyBuffer),
+		in:         make(chan entities.Request),
+		notify:     make(chan entities.Process, notifyBuffer),
 	}
 }
 
 // In returns the input channel for receiving download requests.
-func (s *ProcessService) In() chan<- *entities.Request {
+func (s *ProcessService) In() chan<- entities.Request {
 	return s.in
 }
 
-// Notify returns the output channel for sending notifications about process completion.
-func (s *ProcessService) Notify() <-chan *entities.Process {
+// Out returns the output channel for sending notifications about process completion.
+func (s *ProcessService) Out() <-chan entities.Process {
 	return s.notify
 }
 
@@ -99,10 +100,10 @@ func (s *ProcessService) worker(ctx context.Context, workerID int) {
 
 // handle processes a single download request.
 // It updates the process status at each step and handles errors appropriately.
-func (s *ProcessService) handle(ctx context.Context, req *entities.Request) {
+func (s *ProcessService) handle(ctx context.Context, req entities.Request) {
 	var err error
 	process := &entities.Process{
-		Request: *req,
+		Request: req,
 		Step:    entities.StepCreating,
 		Status:  entities.StatusInProgress,
 	}
@@ -180,12 +181,12 @@ func (s *ProcessService) validate(ctx context.Context, process *entities.Process
 // sendNotify sends a notification.
 func (s *ProcessService) sendNotify(ctx context.Context, process *entities.Process) {
 	select {
-	case s.notify <- process: // Successfully sent
+	case s.notify <- *process: // Successfully sent
+	case <-time.After(time.Second * 5): // Channel full
+		s.log.Error("[process service] notification buffer full, dropping notification",
+			"process", process.LogValue())
 	case <-ctx.Done(): // Context canceled
 		s.log.Error("[process service] notification dropped due to context cancellation",
-			"process", process.LogValue())
-	default: // Channel full
-		s.log.Error("[process service] notification buffer full, dropping notification",
 			"process", process.LogValue())
 	}
 }
