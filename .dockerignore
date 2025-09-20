@@ -1,0 +1,14 @@
+.idea
+playground
+doc
+assets
+.run
+.env*
+.dockerignore
+.gitignore
+.mockery.yaml
+.bkp
+*.md
+LICENSE
+Dockerfile
+docker-compose-*.yaml
