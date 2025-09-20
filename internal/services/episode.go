@@ -21,12 +21,12 @@ type EpisodeService struct {
 }
 
 // NewEpisodeService creates a new EpisodeService instance.
-func NewEpisodeService(cfg *config.Settings, log *slog.Logger, store Store, platforms ...Platform) *EpisodeService {
+func NewEpisodeService(cfg *config.Settings, log *slog.Logger, s Store, p ...Platform) *EpisodeService {
 	return &EpisodeService{
 		cfg:       cfg,
 		log:       log,
-		store:     store,
-		platforms: platforms,
+		store:     s,
+		platforms: p,
 	}
 }
 

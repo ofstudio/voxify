@@ -21,11 +21,11 @@ type FeedService struct {
 }
 
 // NewFeedService creates a new FeedService instance.
-func NewFeedService(cfg *config.Settings, log *slog.Logger, store Store) *FeedService {
+func NewFeedService(cfg *config.Settings, log *slog.Logger, s Store) *FeedService {
 	return &FeedService{
 		cfg:   cfg,
 		log:   log,
-		store: store,
+		store: s,
 	}
 }
 

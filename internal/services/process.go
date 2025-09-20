@@ -27,13 +27,13 @@ type ProcessService struct {
 }
 
 // NewProcessService creates a new ProcessService instance.
-func NewProcessService(cfg *config.Settings, log *slog.Logger, store Store, downloader Downloader, builder Builder) *ProcessService {
+func NewProcessService(cfg *config.Settings, log *slog.Logger, s Store, d Downloader, b Builder) *ProcessService {
 	return &ProcessService{
 		cfg:        cfg,
 		log:        log,
-		store:      store,
-		downloader: downloader,
-		builder:    builder,
+		store:      s,
+		downloader: d,
+		builder:    b,
 		in:         make(chan entities.Request),
 		notify:     make(chan entities.Process, notifyBuffer),
 	}
@@ -92,7 +92,8 @@ func (s *ProcessService) worker(ctx context.Context, workerID int) {
 			return
 		case req := <-s.in:
 			req.ID = randtoken.New(10)
-			s.log.Info("[process service] received new request", "worker_id", workerID, "request", req.LogValue())
+			s.log.Info("[process service] received new request",
+				"worker_id", workerID, "request", req.LogValue())
 			s.handle(ctx, req)
 		}
 	}
@@ -131,7 +132,8 @@ func (s *ProcessService) handle(ctx context.Context, req entities.Request) {
 		s.fail(ctx, process, err)
 		return
 	}
-	s.log.Info("[process service] episode downloaded", "process", process.LogValue())
+	s.log.Info("[process service] episode downloaded",
+		"process", process.LogValue())
 
 	// Build podcast feed
 	process.Step = entities.StepPublishing
