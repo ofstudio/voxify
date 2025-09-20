@@ -113,7 +113,7 @@ func (n *Notifications) sendMessage(ctx context.Context, process *entities.Proce
 		ChatID:          process.Request.ChatID,
 		Text:            text,
 		ReplyParameters: &models.ReplyParameters{MessageID: process.Request.MessageID},
-		ParseMode:       "Markdown",
+		ParseMode:       "MarkdownV2",
 	}
 
 	msg, err := n.bot.SendMessage(ctx, params)
