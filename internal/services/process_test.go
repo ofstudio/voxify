@@ -99,12 +99,12 @@ func (suite *TestProcessServiceSuite) TestInit() {
 		// Start goroutine to consume notifications before calling Init
 		notifications := make([]*entities.Process, 0, 2)
 		done := make(chan struct{})
-
+		ch := suite.service.Notify()
 		go func() {
 			defer close(done)
 			for i := 0; i < 2; i++ {
 				select {
-				case notification := <-suite.service.Notify():
+				case notification := <-ch:
 					notifications = append(notifications, notification)
 					if len(notifications) == 2 {
 						return
@@ -303,10 +303,13 @@ func (suite *TestProcessServiceSuite) TestHandle() {
 		suite.mockStore.On("ProcessUpsert", suite.ctx, suite.matchProcessStatus(entities.StatusSuccess)).Return(nil)
 
 		// Start goroutine to consume notifications
+		ch := suite.service.Notify()
+		done := make(chan struct{})
 		go func() {
+			defer close(done)
 			for i := 0; i < 5; i++ {
 				select {
-				case <-suite.service.Notify():
+				case <-ch:
 					// Consume notification
 				case <-time.After(50 * time.Millisecond):
 					return
@@ -316,6 +319,12 @@ func (suite *TestProcessServiceSuite) TestHandle() {
 
 		// Act
 		suite.service.handle(suite.ctx, request)
+
+		// Wait for consumer to finish to avoid race with next subtest
+		select {
+		case <-done:
+		case <-time.After(300 * time.Millisecond):
+		}
 
 		// Assert - verify all mocks were called
 		suite.mockStore.AssertExpectations(suite.T())
@@ -330,10 +339,13 @@ func (suite *TestProcessServiceSuite) TestHandle() {
 		suite.mockStore.On("ProcessUpsert", suite.ctx, suite.matchProcessError(ErrEpisodeInProgress)).Return(nil)
 
 		// Start goroutine to consume notifications
+		ch := suite.service.Notify()
+		done := make(chan struct{})
 		go func() {
+			defer close(done)
 			for i := 0; i < 2; i++ {
 				select {
-				case <-suite.service.Notify():
+				case <-ch:
 					// Consume notification
 				case <-time.After(50 * time.Millisecond):
 					return
@@ -343,6 +355,12 @@ func (suite *TestProcessServiceSuite) TestHandle() {
 
 		// Act
 		suite.service.handle(suite.ctx, request)
+
+		// Wait for consumer to finish
+		select {
+		case <-done:
+		case <-time.After(300 * time.Millisecond):
+		}
 
 		// Assert
 		suite.mockStore.AssertExpectations(suite.T())
@@ -360,10 +378,13 @@ func (suite *TestProcessServiceSuite) TestHandle() {
 		suite.mockStore.On("ProcessUpsert", suite.ctx, suite.matchProcessError(ErrDownloadFailed)).Return(nil)
 
 		// Start goroutine to consume notifications
+		ch := suite.service.Notify()
+		done := make(chan struct{})
 		go func() {
+			defer close(done)
 			for i := 0; i < 3; i++ {
 				select {
-				case <-suite.service.Notify():
+				case <-ch:
 					// Consume notification
 				case <-time.After(50 * time.Millisecond):
 					return
@@ -373,6 +394,12 @@ func (suite *TestProcessServiceSuite) TestHandle() {
 
 		// Act
 		suite.service.handle(suite.ctx, request)
+
+		// Wait for consumer to finish
+		select {
+		case <-done:
+		case <-time.After(300 * time.Millisecond):
+		}
 
 		// Assert
 		suite.mockStore.AssertExpectations(suite.T())
@@ -396,10 +423,13 @@ func (suite *TestProcessServiceSuite) TestHandle() {
 		suite.mockStore.On("ProcessUpsert", suite.ctx, suite.matchProcessStatusAndError(entities.StatusFailed)).Return(nil)
 
 		// Start goroutine to consume notifications
+		ch := suite.service.Notify()
+		done := make(chan struct{})
 		go func() {
+			defer close(done)
 			for i := 0; i < 5; i++ {
 				select {
-				case <-suite.service.Notify():
+				case <-ch:
 					// Consume notification
 				case <-time.After(50 * time.Millisecond):
 					return
@@ -409,6 +439,12 @@ func (suite *TestProcessServiceSuite) TestHandle() {
 
 		// Act
 		suite.service.handle(suite.ctx, request)
+
+		// Wait for consumer to finish
+		select {
+		case <-done:
+		case <-time.After(300 * time.Millisecond):
+		}
 
 		// Assert
 		suite.mockStore.AssertExpectations(suite.T())
@@ -422,9 +458,12 @@ func (suite *TestProcessServiceSuite) TestHandle() {
 		suite.mockStore.On("ProcessUpsert", suite.ctx, suite.matchProcessError(ErrProcessUpsert)).Return(nil)
 
 		// Start goroutine to consume notification
+		ch := suite.service.Notify()
+		done := make(chan struct{})
 		go func() {
+			defer close(done)
 			select {
-			case <-suite.service.Notify():
+			case <-ch:
 				// Consume notification
 			case <-time.After(50 * time.Millisecond):
 				return
@@ -433,6 +472,12 @@ func (suite *TestProcessServiceSuite) TestHandle() {
 
 		// Act
 		suite.service.handle(suite.ctx, request)
+
+		// Wait for consumer to finish
+		select {
+		case <-done:
+		case <-time.After(300 * time.Millisecond):
+		}
 
 		// Assert
 		suite.mockStore.AssertExpectations(suite.T())
@@ -454,10 +499,11 @@ func (suite *TestProcessServiceSuite) TestUpsert() {
 		// Start goroutine to consume notification
 		var receivedNotification *entities.Process
 		done := make(chan struct{})
+		ch := suite.service.Notify()
 		go func() {
 			defer close(done)
 			select {
-			case notification := <-suite.service.Notify():
+			case notification := <-ch:
 				receivedNotification = notification
 			case <-time.After(100 * time.Millisecond):
 				// Timeout
@@ -512,10 +558,11 @@ func (suite *TestProcessServiceSuite) TestFail() {
 
 		// Start goroutine to consume notification
 		done := make(chan struct{})
+		ch := suite.service.Notify()
 		go func() {
 			defer close(done)
 			select {
-			case notification := <-suite.service.Notify():
+			case notification := <-ch:
 				suite.Equal(process, notification)
 				suite.Equal(entities.StatusFailed, notification.Status)
 				suite.Equal(testError, notification.Error)
@@ -551,10 +598,11 @@ func (suite *TestProcessServiceSuite) TestFail() {
 
 		// Start goroutine to consume notification
 		done := make(chan struct{})
+		ch := suite.service.Notify()
 		go func() {
 			defer close(done)
 			select {
-			case notification := <-suite.service.Notify():
+			case notification := <-ch:
 				suite.Equal(process2, notification)
 			case <-time.After(100 * time.Millisecond):
 				suite.Fail("Expected notification not received")
