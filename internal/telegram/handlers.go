@@ -123,9 +123,8 @@ func (h *Handlers) sendRequest(ctx context.Context, req *entities.Request) error
 // sendMessage sends text message to the specified chat.
 func (h *Handlers) sendMessage(ctx context.Context, b *bot.Bot, c models.Chat, t string) {
 	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:    c.ID,
-		Text:      t,
-		ParseMode: "MarkdownV2",
+		ChatID: c.ID,
+		Text:   t,
 	})
 	if err != nil {
 		h.log.Error("[bot] failed to send message", "error", err.Error(), "chat", logChat(&c))
