@@ -27,12 +27,13 @@ Perfect for creating your own podcast collection or listening to content offline
 
 	// Error messages for codes 100-199
 
-	MsgNoMatchingPlatform = "⚠️ This URL is not supported. Please provide a valid video URL."
-	MsgDownloadFailed     = "⚠️ Download failed. The media might be unavailable or protected."
-	MsgEpisodeInProgress  = "⚠️ This episode is already being processed. Please wait."
-	MsgEpisodeExists      = "⚠️ This episode has already been downloaded."
-	MsgProcessInterrupted = "⚠️ Download was interrupted. Please try again."
+	MsgNoMatchingPlatform = "⚠️ This URL is not supported. Please provide a valid video URL."  // services.ErrNoMatchingPlatform
+	MsgDownloadFailed     = "⚠️ Download failed. The media might be unavailable or protected." // services.ErrDownloadFailed
+	MsgEpisodeInProgress  = "⚠️ This episode is already being processed. Please wait."         // services.ErrEpisodeInProgress
+	MsgEpisodeExists      = "⚠️ This episode has already been downloaded."                     // services.ErrEpisodeExists
+	MsgProcessInterrupted = "⚠️ Download was interrupted. Please try again."                   // services.ErrProcessInterrupted
+	MsgEmptyFeed          = "⚠️ The feed has no items to process."                             // services.ErrEmptyFeed
+	MsgInvalidRequest     = "⚠️ This request is invalid."                                      // services.ErrInvalidRequest
 
 	MsgBuildSuccess = "✅ RSS feed built successfully!"
-	MsgBuildError   = "⚠️ Failed to build RSS feed."
 )
