@@ -9,6 +9,8 @@ import (
 	"github.com/ofstudio/voxify/pkg/randtoken"
 )
 
+const notifyBuffer = 64
+
 // ProcessService handles the processing of download requests.
 type ProcessService struct {
 	log        *slog.Logger
@@ -27,7 +29,7 @@ func NewProcessService(log *slog.Logger, store Store, downloader Downloader, bui
 		downloader: downloader,
 		builder:    builder,
 		in:         make(chan *entities.Request),
-		notify:     make(chan *entities.Process),
+		notify:     make(chan *entities.Process, notifyBuffer),
 	}
 }
 
