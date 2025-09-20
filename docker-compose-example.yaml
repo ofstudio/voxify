@@ -1,0 +1,141 @@
+# Example Docker Compose file to run the bot with Traefik reverse proxy
+# and Nginx to serve the public directory over HTTPS with a free Let's Encrypt certificate.
+# Make sure to replace the placeholders with your actual values and set the required environment variables.
+
+services:
+
+  bot:
+    # Set ${VERSION} with the current version of the bot
+    # Current version can be found at:
+    # https://github.com/ofstudio/voxify/pkgs/container/voxify
+    image: ghcr.io/ofstudio/voxify:${VERSION}
+    restart: always
+
+    volumes:
+      # Replace `</path/to/data>` with the path to the path on local machine
+      # where the bot will store its database, public directory and downloads
+      # Make sure this directory exists and is writable by the Docker container
+      - </path/to/data>/db:/data/db
+      - </path/to/data>/public:/data/public
+      - </path/to/data>/downloads:/data/downloads
+
+    environment:
+      # See `.env-example` file for reference
+      # You can copy it to `.env` and fill in the values
+
+      # [REQUIRED] Telegram bot token from BotFather
+      # Note: you can create a bot and get the token
+      # by messaging @BotFather on Telegram: https://t.me/BotFather
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+
+      # [REQUIRED] Comma-separated list of allowed Telegram user IDs
+      # Example: 123456789,987654321
+      # Note: you can find your user ID by messaging @userinfobot on Telegram: https://t.me/userinfobot
+      TELEGRAM_ALLOWED_USERS: ${TELEGRAM_ALLOWED_USERS}
+
+      # [REQUIRED] Public URL where the feed and media files are accessible
+      # Example: https://example.com/podcasts
+      PUBLIC_URL: https://<mydomain.com>
+
+      # Timeout for downloading media (default: 1h)
+      # Example formats: 30s, 10m, 1h
+      # DOWNLOAD_TIMEOUT: ${DOWNLOAD_TIMEOUT}
+
+      # Media download format (mp3, m4a) (default: mp3)
+      # DOWNLOAD_FORMAT: ${DOWNLOAD_FORMAT}
+
+      # Media download quality (default: 192k)
+      # DOWNLOAD_QUALITY: ${DOWNLOAD_QUALITY}
+
+      # Number of concurrent download workers (default: 2)
+      # DOWNLOAD_WORKERS: ${DOWNLOAD_WORKERS}
+
+      # Size of the square thumbnail in pixels (default: 3000)
+      # THUMBNAIL_SIZE: ${THUMBNAIL_SIZE}
+
+      # Path to yt-dlp executable (default: yt-dlp)
+      # YT_DLP_PATH: ${YT_DLP_PATH}
+
+      # Path to ffmpeg executable (default: ffmpeg)
+      # FFMPEG_PATH: ${FFMPEG_PATH}
+
+      # RSS FEED CONFIGURATION
+      # Name of the RSS feed file (default: rss.xml)
+      # FEED_FILENAME: ${FEED_FILENAME}
+
+      # Title of the RSS feed (default: Voxify Podcast)
+      # Example: My Favorite Podcasts
+      # FEED_TITLE: ${FEED_TITLE}
+
+      # Description of the RSS feed (default: Voxify generic description)
+      # FEED_DESC: ${FEED_DESC}
+
+      # URL of the RSS feed cover image (default: Voxify generic image)
+      # FEED_IMAGE: ${FEED_IMAGE}
+
+      # Language of the RSS feed (default: en)
+      # FEED_LANGUAGE: ${FEED_LANGUAGE:-en}
+
+      # Primary categories of the RSS feed - comma-separated (default: Technology)
+      # Example: Leisure,Crafts,Hobbies
+      # FEED_CATEGORIES: ${FEED_CATEGORIES}
+
+      # Additional categories - comma-separated (optional)
+      # Example: Science,Astronomy
+      # FEED_CATEGORIES2: ${FEED_CATEGORIES2}
+
+      # Additional categories - comma-separated (optional)
+      # FEED_CATEGORIES3: ${FEED_CATEGORIES3}
+
+      # Whether the feed contains explicit content (default: false)
+      # FEED_IS_EXPLICIT: ${FEED_IS_EXPLICIT}
+
+      # Author of the RSS feed (default: unspecified)
+      # Example: John Doe
+      # FEED_AUTHOR: ${FEED_AUTHOR}
+
+      # Link to the website of the RSS feed (default: https://github.com/ofstudio/voxify)
+      # Example: https://example.com
+      # FEED_LINK: ${FEED_LINK}
+
+      # Comma-separated keywords for the RSS feed (default: unspecified)
+      # Example: technology,education,science
+      # FEED_KEYWORDS: ${FEED_KEYWORDS}
+
+
+  # Reverse proxy with Traefik and Nginx to serve the public directory over HTTPS
+  # with a free Let's Encrypt certificate.
+  #
+  # Make sure to replace:
+  #  - <my@email.org> with your email address for Let's Encrypt notifications
+  #  - </path/to/data> with the path to the directory on your local machine
+  #  - <mydomain.com> with your actual domain name
+
+  traefik:
+    image: traefik:v3.0
+    command:
+      - "--providers.docker=true"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.le.acme.tlschallenge=true"
+      # Replace <my@email.org> with your email address for Let's Encrypt notifications
+      - "--certificatesresolvers.le.acme.email=<my@email.org>"
+      - "--certificatesresolvers.le.acme.storage=/letsencrypt/acme.json"
+
+    ports:
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Replace </path/to/data> with the path to the directory on your local machine
+      - </path/to/data>/letsencrypt:/letsencrypt
+
+  nginx:
+    image: nginx:alpine
+    volumes:
+      # Replace </path/to/data> with the path to the directory on your local machine
+      - </path/to/data>/public:/usr/share/nginx/html:ro
+    labels:
+      - "traefik.enable=true"
+      # Replace <mydomain.com> with your actual domain name
+      - "traefik.http.routers.voxify-public.rule=Host(`<mydomain.com>`)"
+      - "traefik.http.routers.voxify-public.entrypoints=websecure"
+      - "traefik.http.routers.voxify-public.tls.certresolver=le"
