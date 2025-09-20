@@ -38,14 +38,14 @@ func (n *Notifications) Start(ctx context.Context) {
 				n.log.Info("bot notifications stopped")
 				return
 			case process := <-n.notifier.Notify():
-				msg := n.getMessage(ctx, process)
+				msg := n.getMessage(process)
 				n.sendMessage(ctx, process, msg)
 			}
 		}
 	}()
 }
 
-func (n *Notifications) getMessage(ctx context.Context, process *entities.Process) string {
+func (n *Notifications) getMessage(process *entities.Process) string {
 	switch {
 	case process.Step == entities.StepDownloading && process.Status == entities.StatusInProgress:
 		return n.getDownloadStartedMessage()

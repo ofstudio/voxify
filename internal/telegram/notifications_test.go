@@ -63,7 +63,7 @@ func (suite *TestNotificationsSuite) TestGetMessage() {
 		}
 
 		// Act
-		message := suite.notifications.getMessage(suite.ctx, process)
+		message := suite.notifications.getMessage(process)
 
 		// Assert
 		suite.Equal(locales.MsgDownloadStarted, message)
@@ -80,7 +80,7 @@ func (suite *TestNotificationsSuite) TestGetMessage() {
 		}
 
 		// Act
-		message := suite.notifications.getMessage(suite.ctx, process)
+		message := suite.notifications.getMessage(process)
 
 		// Assert
 		expected := "✅ Podcast downloaded successfully!\n\n📖 **Test Episode**"
@@ -97,7 +97,7 @@ func (suite *TestNotificationsSuite) TestGetMessage() {
 		}
 
 		// Act
-		message := suite.notifications.getMessage(suite.ctx, process)
+		message := suite.notifications.getMessage(process)
 
 		// Assert
 		suite.Equal(locales.MsgDownloadFailed, message)
@@ -111,7 +111,7 @@ func (suite *TestNotificationsSuite) TestGetMessage() {
 		}
 
 		// Act
-		message := suite.notifications.getMessage(suite.ctx, process)
+		message := suite.notifications.getMessage(process)
 
 		// Assert
 		suite.Equal("", message, "Should return empty string for unsupported combinations")
