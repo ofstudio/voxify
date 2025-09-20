@@ -2,7 +2,6 @@ package telegram
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 	"os"
 	"testing"
@@ -55,20 +54,6 @@ func (suite *TestNotificationsSuite) TestNewNotifications() {
 
 // TestGetMessage tests the getMessage method
 func (suite *TestNotificationsSuite) TestGetMessage() {
-	suite.Run("Success_DownloadStarted", func() {
-		// Arrange
-		process := &entities.Process{
-			Step:   entities.StepDownloading,
-			Status: entities.StatusInProgress,
-		}
-
-		// Act
-		message := suite.notifications.getMessage(process)
-
-		// Assert
-		suite.Equal(locales.MsgDownloadStarted, message)
-	})
-
 	suite.Run("Success_ProcessSuccess", func() {
 		// Arrange
 		process := &entities.Process{
@@ -103,10 +88,10 @@ func (suite *TestNotificationsSuite) TestGetMessage() {
 		suite.Equal(locales.MsgDownloadFailed, message)
 	})
 
-	suite.Run("EmptyMessage_UnsupportedStatusStepCombination", func() {
+	suite.Run("Success_DownloadInProgress", func() {
 		// Arrange
 		process := &entities.Process{
-			Step:   entities.StepCreating, // Not supported for notifications
+			Step:   entities.StepDownloading,
 			Status: entities.StatusInProgress,
 		}
 
@@ -114,18 +99,22 @@ func (suite *TestNotificationsSuite) TestGetMessage() {
 		message := suite.notifications.getMessage(process)
 
 		// Assert
-		suite.Equal("", message, "Should return empty string for unsupported combinations")
+		suite.Equal(locales.MsgDownloadStarted, message)
 	})
 
-}
+	suite.Run("DefaultCase_UnsupportedStatusStepCombination", func() {
+		// Arrange
+		process := &entities.Process{
+			Step:   entities.StepCreating,
+			Status: entities.StatusInProgress,
+		}
 
-// TestGetDownloadStartedMessage tests the getDownloadStartedMessage method
-func (suite *TestNotificationsSuite) TestGetDownloadStartedMessage() {
-	// Act
-	message := suite.notifications.getDownloadStartedMessage()
+		// Act
+		message := suite.notifications.getMessage(process)
 
-	// Assert
-	suite.Equal(locales.MsgDownloadStarted, message)
+		// Assert
+		suite.Equal(locales.MsgSomethingWentWrong, message)
+	})
 }
 
 // TestGetSuccessMessage tests the getSuccessMessage method
@@ -191,202 +180,6 @@ func (suite *TestNotificationsSuite) TestGetSuccessMessage() {
 		expected := "✅ Podcast downloaded successfully!\n\n📖 **Episode with **bold** and *italic* & special chars**"
 		suite.Equal(expected, message)
 	})
-}
-
-// TestGetErrorMessage tests the getErrorMessage method
-func (suite *TestNotificationsSuite) TestGetErrorMessage() {
-	suite.Run("NoError", func() {
-		// Arrange
-		process := &entities.Process{
-			Error: nil,
-		}
-
-		// Act
-		message := suite.notifications.getErrorMessage(process)
-
-		// Assert
-		suite.Equal(locales.MsgSomethingWentWrong, message)
-	})
-
-	suite.Run("ServicesError_NoMatchingPlatform", func() {
-		// Arrange
-		process := &entities.Process{
-			Error: services.NewError(101, "no matching platform"),
-		}
-
-		// Act
-		message := suite.notifications.getErrorMessage(process)
-
-		// Assert
-		suite.Equal(locales.MsgNoMatchingPlatform, message)
-	})
-
-	suite.Run("ServicesError_DownloadFailed", func() {
-		// Arrange
-		process := &entities.Process{
-			Error: services.NewError(102, "download failed"),
-		}
-
-		// Act
-		message := suite.notifications.getErrorMessage(process)
-
-		// Assert
-		suite.Equal(locales.MsgDownloadFailed, message)
-	})
-
-	suite.Run("ServicesError_EpisodeInProgress", func() {
-		// Arrange
-		process := &entities.Process{
-			Error: services.NewError(103, "episode in progress"),
-		}
-
-		// Act
-		message := suite.notifications.getErrorMessage(process)
-
-		// Assert
-		suite.Equal(locales.MsgEpisodeInProgress, message)
-	})
-
-	suite.Run("ServicesError_EpisodeExists", func() {
-		// Arrange
-		process := &entities.Process{
-			Error: services.NewError(104, "episode exists"),
-		}
-
-		// Act
-		message := suite.notifications.getErrorMessage(process)
-
-		// Assert
-		suite.Equal(locales.MsgEpisodeExists, message)
-	})
-
-	suite.Run("ServicesError_ProcessInterrupted", func() {
-		// Arrange
-		process := &entities.Process{
-			Error: services.NewError(105, "process interrupted"),
-		}
-
-		// Act
-		message := suite.notifications.getErrorMessage(process)
-
-		// Assert
-		suite.Equal(locales.MsgProcessInterrupted, message)
-	})
-
-	suite.Run("ServicesError_ProcessUpsert", func() {
-		// Arrange
-		process := &entities.Process{
-			Error: services.NewError(201, "failed to upsert process"),
-		}
-
-		// Act
-		message := suite.notifications.getErrorMessage(process)
-
-		// Assert
-		expected := "⚠️ Something went wrong while downloading the podcast (error 201)."
-		suite.Equal(expected, message)
-	})
-
-	suite.Run("ServicesError_ProcessGetByURL", func() {
-		// Arrange
-		process := &entities.Process{
-			Error: services.NewError(202, "failed to get process by URL"),
-		}
-
-		// Act
-		message := suite.notifications.getErrorMessage(process)
-
-		// Assert
-		expected := "⚠️ Something went wrong while downloading the podcast (error 202)."
-		suite.Equal(expected, message)
-	})
-
-	suite.Run("ServicesError_DownloadDir", func() {
-		// Arrange
-		process := &entities.Process{
-			Error: services.NewError(301, "download directory error"),
-		}
-
-		// Act
-		message := suite.notifications.getErrorMessage(process)
-
-		// Assert
-		expected := "⚠️ Something went wrong while downloading the podcast (error 301)."
-		suite.Equal(expected, message)
-	})
-
-	suite.Run("ServicesError_UnknownCode", func() {
-		// Arrange
-		process := &entities.Process{
-			Error: services.NewError(999, "unknown error"),
-		}
-
-		// Act
-		message := suite.notifications.getErrorMessage(process)
-
-		// Assert
-		expected := "⚠️ Something went wrong while downloading the podcast (error 999)."
-		suite.Equal(expected, message)
-	})
-
-	suite.Run("NonServicesError", func() {
-		// Arrange
-		process := &entities.Process{
-			Error: errors.New("generic error"),
-		}
-
-		// Act
-		message := suite.notifications.getErrorMessage(process)
-
-		// Assert
-		suite.Equal(locales.MsgSomethingWentWrong, message)
-	})
-
-	suite.Run("NilProcessWithError", func() {
-		// Arrange
-		process := &entities.Process{
-			Error: nil,
-		}
-
-		// Act
-		message := suite.notifications.getErrorMessage(process)
-
-		// Assert
-		suite.Equal(locales.MsgSomethingWentWrong, message)
-	})
-}
-
-// TestGetErrorMessageByCode tests the getErrorMessageByCode method
-func (suite *TestNotificationsSuite) TestGetErrorMessageByCode() {
-	testCases := []struct {
-		name     string
-		code     int
-		expected string
-	}{
-		{"NoMatchingPlatform", 101, locales.MsgNoMatchingPlatform},
-		{"DownloadFailed", 102, locales.MsgDownloadFailed},
-		{"EpisodeInProgress", 103, locales.MsgEpisodeInProgress},
-		{"EpisodeExists", 104, locales.MsgEpisodeExists},
-		{"ProcessInterrupted", 105, locales.MsgProcessInterrupted},
-		{"ProcessUpsertError", 201, "⚠️ Something went wrong while downloading the podcast (error 201)."},
-		{"ProcessGetByURLError", 202, "⚠️ Something went wrong while downloading the podcast (error 202)."},
-		{"EpisodeGetByOriginalURLError", 203, "⚠️ Something went wrong while downloading the podcast (error 203)."},
-		{"DownloadDirError", 301, "⚠️ Something went wrong while downloading the podcast (error 301)."},
-		{"MoveFileError", 303, "⚠️ Something went wrong while downloading the podcast (error 303)."},
-		{"UnknownCode_999", 999, "⚠️ Something went wrong while downloading the podcast (error 999)."},
-		{"UnknownCode_0", 0, "⚠️ Something went wrong while downloading the podcast (error 0)."},
-		{"NegativeCode", -1, "⚠️ Something went wrong while downloading the podcast (error -1)."},
-	}
-
-	for _, tc := range testCases {
-		suite.Run(tc.name, func() {
-			// Act
-			message := suite.notifications.getErrorMessageByCode(tc.code)
-
-			// Assert
-			suite.Equal(tc.expected, message)
-		})
-	}
 }
 
 // Run the test suite
