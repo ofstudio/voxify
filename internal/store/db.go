@@ -28,6 +28,11 @@ func NewSQLite(dbFilePath string, requiredVer uint) (*sql.DB, error) {
 		return nil, fmt.Errorf("migration error: %w", err)
 	}
 
+	// 4. Turn on foreign keys support
+	if _, err = db.Exec("PRAGMA foreign_keys = ON;"); err != nil {
+		return nil, fmt.Errorf("failed to enable foreign keys support: %w", err)
+	}
+
 	return db, nil
 }
 
