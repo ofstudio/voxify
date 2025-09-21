@@ -17,11 +17,18 @@ var (
 
 	// Store errors
 
-	ErrProcessUpsert           = NewError(201, "failed to update process")
-	ErrProcessGetByURL         = NewError(202, "failed to get process by URL")
-	ErrEpisodeGetByOriginalURL = NewError(203, "failed to get episode by original URL")
-	ErrEpisodeCreate           = NewError(204, "failed to create episode")
-	ErrProcessGetByStatus      = NewError(205, "failed to get process by status")
+	ErrProcessUpsert              = NewError(201, "failed to update process")
+	ErrProcessCountByUrlAndStatus = NewError(202, "failed to count processes by URL and status")
+	ErrEpisodeGetByOriginalURL    = NewError(203, "failed to get episode by original URL")
+	ErrEpisodeCreate              = NewError(204, "failed to create episode")
+	ErrProcessGetByStatus         = NewError(205, "failed to get process by status")
+	ErrEpisodeListAll             = NewError(206, "failed to list all episodes")
+	ErrEpisodeCountAll            = NewError(207, "failed to count all episodes")
+	ErrEpisodeGetLastTime         = NewError(208, "failed to get last episode time")
+
+	// I/O errors
+
+	ErrFeedSave = NewError(301, "failed to save feed to file")
 )
 
 type Error = struct {

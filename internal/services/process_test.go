@@ -246,7 +246,7 @@ func (suite *TestProcessServiceSuite) TestValidate() {
 
 		// Assert
 		suite.Error(err)
-		suite.True(errors.Is(err, ErrProcessGetByURL))
+		suite.True(errors.Is(err, ErrProcessCountByUrlAndStatus))
 	})
 
 	suite.Run("EpisodeGetError", func() {

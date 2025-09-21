@@ -159,7 +159,7 @@ func (s *ProcessService) validate(ctx context.Context, process *entities.Process
 	// Init processes in progress
 	count, err := s.store.ProcessCountByUrlAndStatus(ctx, process.Request.Url, entities.StatusInProgress)
 	if err != nil {
-		return fmt.Errorf("%w: %w", ErrProcessGetByURL, err)
+		return fmt.Errorf("%w: %w", ErrProcessCountByUrlAndStatus, err)
 	}
 	if count > 1 { // count > 1 because the current process is also counted
 		return ErrEpisodeInProgress

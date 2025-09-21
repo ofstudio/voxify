@@ -157,7 +157,7 @@ func (suite *TestFeedServiceSuite) TestBuild() {
 
 		// Assert
 		suite.Error(err)
-		suite.Contains(err.Error(), "failed to get episodes")
+		suite.Contains(err.Error(), "failed to list all episodes")
 		suite.Contains(err.Error(), "store error")
 	})
 
@@ -190,7 +190,9 @@ func (suite *TestFeedServiceSuite) TestBuild() {
 
 		// Assert
 		suite.Error(err)
-		suite.Contains(err.Error(), "failed to write feed")
+		suite.Contains(err.Error(), "failed to save feed to file")
+		suite.Contains(err.Error(), "failed to create feed file")
+		suite.Contains(err.Error(), "no such file or directory")
 	})
 
 	suite.Run("Error_ContextCancelled", func() {
@@ -205,7 +207,7 @@ func (suite *TestFeedServiceSuite) TestBuild() {
 
 		// Assert
 		suite.Error(err)
-		suite.Contains(err.Error(), "failed to get episodes")
+		suite.Contains(err.Error(), "failed to list all episodes")
 		suite.ErrorIs(err, context.Canceled)
 	})
 }
@@ -373,7 +375,7 @@ func (suite *TestFeedServiceSuite) TestFeed() {
 
 		// Assert
 		suite.Error(err)
-		suite.Contains(err.Error(), "failed to count episodes")
+		suite.Contains(err.Error(), "failed to count all episodes")
 		suite.ErrorIs(err, expectedErr)
 	})
 

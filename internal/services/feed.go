@@ -41,7 +41,7 @@ func (s *FeedService) Build(ctx context.Context) error {
 	// Get all episodes from store
 	episodes, err := s.store.EpisodeListAll(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to get episodes: %w", err)
+		return fmt.Errorf("%w: %w", ErrEpisodeListAll, err)
 	}
 	if len(episodes) == 0 {
 		return ErrEmptyFeed
@@ -57,7 +57,7 @@ func (s *FeedService) Build(ctx context.Context) error {
 
 	// Write feed to file
 	if err = s.saveFeed(feed); err != nil {
-		return fmt.Errorf("failed to write feed: %w", err)
+		return fmt.Errorf("%w: %w", ErrFeedSave, err)
 	}
 
 	s.log.Info("[feed service] podcast feed built", "episodes_count", len(episodes))
@@ -129,7 +129,7 @@ func (s *FeedService) saveFeed(feed *feedcast.Feed) error {
 
 	// Write RSS feed to file
 	if err = feed.Encode(file); err != nil {
-		return fmt.Errorf("failed to encode feed: %w", err)
+		return fmt.Errorf("failed to encode feed to file: %w", err)
 	}
 
 	return nil
@@ -172,13 +172,13 @@ func (s *FeedService) Feed(ctx context.Context) (*entities.Feed, error) {
 	// Count episodes
 	count, err := s.store.EpisodeCountAll(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to count episodes: %w", err)
+		return nil, fmt.Errorf("%w: %w", ErrEpisodeCountAll, err)
 	}
 
 	// If there are episodes, get the last published date
 	if count > 0 {
 		if pubDate, err = s.store.EpisodeGetLastTime(ctx); err != nil {
-			return nil, fmt.Errorf("failed to get last episode time: %w", err)
+			return nil, fmt.Errorf("%w: %w", ErrEpisodeGetLastTime, err)
 		}
 	}
 
