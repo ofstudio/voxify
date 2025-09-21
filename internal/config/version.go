@@ -2,8 +2,10 @@ package config
 
 var version string
 
+const VersionDev = "dev"
+
 // Version returns the version of the build.
-// If the version is not set, it returns "dev".
+// If the version is not set, it returns VersionDev
 //
 // The version is set by the build system:
 //
@@ -12,7 +14,7 @@ var version string
 //	  -o ${DEST} ${SRC}
 func Version() string {
 	if version == "" {
-		return "dev"
+		return VersionDev
 	}
 	return version
 }
