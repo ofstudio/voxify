@@ -14,18 +14,18 @@ import (
 )
 
 type Handlers struct {
-	log     *slog.Logger
-	cfg     config.Settings
-	out     chan<- entities.Request
-	builder Builder
+	log    *slog.Logger
+	cfg    config.Settings
+	out    chan<- entities.Request
+	feeder Feeder
 }
 
-func NewHandlers(cfg config.Settings, log *slog.Logger, out chan<- entities.Request, b Builder) *Handlers {
+func NewHandlers(cfg config.Settings, log *slog.Logger, out chan<- entities.Request, f Feeder) *Handlers {
 	return &Handlers{
-		log:     log,
-		cfg:     cfg,
-		builder: b,
-		out:     out,
+		log:    log,
+		cfg:    cfg,
+		feeder: f,
+		out:    out,
 	}
 }
 
@@ -54,7 +54,7 @@ func (h *Handlers) CmdBuild() bot.HandlerFunc {
 		h.log.Info("[bot] build command received", "update_id", update.ID, "message", logMessage(update.Message))
 
 		msg := locales.MsgBuildSuccess
-		if err := h.builder.Build(ctx); err != nil {
+		if err := h.feeder.Build(ctx); err != nil {
 			msg = msgErr(err)
 			h.log.Error("[bot] failed to build podcast feed",
 				"error", err.Error(), "chat", logChat(&update.Message.Chat))

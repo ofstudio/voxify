@@ -23,7 +23,7 @@ type TestHandlersSuite struct {
 	cfg         config.Settings
 	handlers    *Handlers
 	requestChan chan entities.Request
-	mockBuilder *mocks.MockBuilder
+	mockFeeder  *mocks.MockFeeder
 }
 
 // SetupSuite is called once before the entire test suite runs
@@ -38,8 +38,8 @@ func (suite *TestHandlersSuite) SetupSuite() {
 // SetupTest is called before each test method
 func (suite *TestHandlersSuite) SetupTest() {
 	suite.requestChan = make(chan entities.Request, 10)
-	suite.mockBuilder = mocks.NewMockBuilder(suite.T())
-	suite.handlers = NewHandlers(suite.cfg, suite.log, suite.requestChan, suite.mockBuilder)
+	suite.mockFeeder = mocks.NewMockFeeder(suite.T())
+	suite.handlers = NewHandlers(suite.cfg, suite.log, suite.requestChan, suite.mockFeeder)
 }
 
 // TestSendRequest tests the sendRequest method

@@ -1,9 +1,7 @@
 package telegram
 
 import (
-	"context"
+	"github.com/ofstudio/voxify/internal/services"
 )
 
-type Builder interface {
-	Build(ctx context.Context) error
-}
+type Feeder = services.Feeder

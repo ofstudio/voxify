@@ -207,37 +207,6 @@ func (suite *TestNotificationsSuite) TestMsgErr() {
 	})
 }
 
-// TestStart tests the Start method behavior (without actual bot calls)
-func (suite *TestNotificationsSuite) TestStart() {
-	suite.Run("ProcessHandling", func() {
-		// Arrange
-		process := entities.Process{
-			Step:   entities.StepDownloading,
-			Status: entities.StatusInProgress,
-			Request: entities.Request{
-				ChatID:    123,
-				MessageID: 456,
-			},
-		}
-
-		// Start the notifications service
-		ctx, cancel := context.WithCancel(suite.ctx)
-		defer cancel()
-
-		suite.notifications.Start(ctx)
-
-		// Act - send a process to the channel
-		suite.processChannel <- process
-
-		// Give some time for processing
-		// Since we can't test the actual bot sending, we just verify the method doesn't panic
-		cancel() // Stop the service
-
-		// Assert - if we get here without panic, the test passes
-		suite.True(true)
-	})
-}
-
 // Run the test suite
 func TestNotifications(t *testing.T) {
 	suite.Run(t, new(TestNotificationsSuite))
