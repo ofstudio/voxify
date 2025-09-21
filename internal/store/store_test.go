@@ -334,11 +334,38 @@ func (suite *TestSQLiteStoreSuite) TestProcessUpsert() {
 			Status: entities.StatusInProgress,
 		}
 
-		err := suite.store.ProcessUpsert(suite.ctx, process)
+		createdAt := time.Now().Add(-2 * time.Second).UTC()
+		updatedAt := createdAt
+
+		res, err := suite.db.ExecContext(suite.ctx, `
+			INSERT INTO processes (
+				request_id, request_user_id, request_chat_id, request_message_id,
+				request_url, request_download_format, request_download_quality, request_force,
+				step, status, error, episode_id, created_at, updated_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`, "req-update-direct",
+			process.Request.UserID,
+			process.Request.ChatID,
+			process.Request.MessageID,
+			process.Request.Url,
+			string(process.Request.DownloadFormat),
+			process.Request.DownloadQuality,
+			process.Request.Force,
+			string(process.Step),
+			string(process.Status),
+			nil, nil,
+			createdAt,
+			updatedAt,
+		)
 		suite.Require().NoError(err)
+		id, err := res.LastInsertId()
+		suite.Require().NoError(err)
+		process.ID = id
+		process.CreatedAt = createdAt
+		process.UpdatedAt = updatedAt
 
 		originalUpdatedAt := process.UpdatedAt
-		time.Sleep(1001 * time.Millisecond) // Ensure time difference
+		// time.Sleep(1001 * time.Millisecond) // Ensure time difference
 
 		// Act - update the process
 		process.Step = entities.StepPublishing
@@ -766,6 +793,62 @@ func (suite *TestSQLiteStoreSuite) TestRollback() {
 		// Assert
 		suite.Error(err, "Should error when rolling back without transaction")
 		suite.Contains(err.Error(), "unable to rollback outside of a transaction")
+	})
+}
+
+func (suite *TestSQLiteStoreSuite) TestEpisodeGetLastTime() {
+	suite.Run("WithEpisodes", func() {
+		// Arrange - insert two episodes directly with explicit created_at timestamps
+		t1 := time.Now().Add(-time.Minute).UTC()
+		t2 := time.Now().UTC()
+
+		_, err := suite.db.ExecContext(suite.ctx, `
+			INSERT INTO episodes (title, media_file, media_type, author, original_url, canonical_url, created_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?)
+		`, "LastTime Ep 1", "ep1.mp3", "audio/mpeg", "author1", "https://example.com/lt1", "https://example.com/lt1", t1)
+		suite.Require().NoError(err)
+
+		_, err = suite.db.ExecContext(suite.ctx, `
+			INSERT INTO episodes (title, media_file, media_type, author, original_url, canonical_url, created_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?)
+		`, "LastTime Ep 2", "ep2.mp3", "audio/mpeg", "author2", "https://example.com/lt2", "https://example.com/lt2", t2)
+		suite.Require().NoError(err)
+
+		// Act
+		lastTime, err := suite.store.EpisodeGetLastTime(suite.ctx)
+
+		// Assert
+		suite.Require().NoError(err)
+		suite.True(lastTime.Equal(t2), "expected lastTime to equal the latest inserted created_at")
+	})
+
+	suite.Run("NoEpisodes", func() {
+		// Ensure no episodes exist
+		suite.cleanupTestData()
+
+		// Act
+		lastTime, err := suite.store.EpisodeGetLastTime(suite.ctx)
+
+		// Assert - expect specific error when no episodes are present
+		suite.NoError(err, "Should return no episodes")
+		suite.True(lastTime.IsZero(), "returned time should be zero value when no episodes exist")
+	})
+
+	suite.Run("DatabaseError", func() {
+		// Simulate database error by closing the DB connection
+		suite.Require().NoError(suite.db.Close())
+
+		// Act
+		lastTime, err := suite.store.EpisodeGetLastTime(suite.ctx)
+		// Assert
+		suite.Error(err, "Should return error when database is closed")
+		suite.True(lastTime.IsZero(), "returned time should be zero value on error")
+
+		// Reopen the database for subsequent tests
+		var errOpen error
+		suite.db, errOpen = NewSQLite(":memory:", 1)
+		suite.Require().NoError(errOpen, "Failed to reopen in-memory database")
+		suite.store = NewSQLiteStore(suite.db)
 	})
 }
 

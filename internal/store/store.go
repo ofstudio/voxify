@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -189,6 +190,26 @@ func (s *SQLiteStore) EpisodeGetByOriginalUrl(ctx context.Context, url string) (
 	}
 
 	return episodes, nil
+}
+
+// EpisodeGetLastTime returns the creation time of the most recently added episode.
+// If no episodes exist, it returns zero time.
+func (s *SQLiteStore) EpisodeGetLastTime(ctx context.Context) (time.Time, error) {
+	query := `
+		SELECT created_at
+		FROM episodes
+		ORDER BY created_at DESC
+		LIMIT 1`
+
+	var createdAt time.Time
+	err := s.execer.QueryRowContext(ctx, query).Scan(&createdAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return time.Time{}, nil
+	}
+	if err != nil {
+		return time.Time{}, fmt.Errorf("failed to get last episode time: %w", err)
+	}
+	return createdAt, nil
 }
 
 // ProcessUpsert creates or updates a process in the database

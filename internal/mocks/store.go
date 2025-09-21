@@ -6,6 +6,7 @@ package mocks
 
 import (
 	"context"
+	"time"
 
 	"github.com/ofstudio/voxify/internal/entities"
 	"github.com/ofstudio/voxify/internal/store"
@@ -299,6 +300,66 @@ func (_c *MockStore_EpisodeGetByOriginalUrl_Call) Return(episodes []*entities.Ep
 }
 
 func (_c *MockStore_EpisodeGetByOriginalUrl_Call) RunAndReturn(run func(ctx context.Context, url string) ([]*entities.Episode, error)) *MockStore_EpisodeGetByOriginalUrl_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// EpisodeGetLastTime provides a mock function for the type MockStore
+func (_mock *MockStore) EpisodeGetLastTime(ctx context.Context) (time.Time, error) {
+	ret := _mock.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for EpisodeGetLastTime")
+	}
+
+	var r0 time.Time
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context) (time.Time, error)); ok {
+		return returnFunc(ctx)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context) time.Time); ok {
+		r0 = returnFunc(ctx)
+	} else {
+		r0 = ret.Get(0).(time.Time)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = returnFunc(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockStore_EpisodeGetLastTime_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'EpisodeGetLastTime'
+type MockStore_EpisodeGetLastTime_Call struct {
+	*mock.Call
+}
+
+// EpisodeGetLastTime is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockStore_Expecter) EpisodeGetLastTime(ctx interface{}) *MockStore_EpisodeGetLastTime_Call {
+	return &MockStore_EpisodeGetLastTime_Call{Call: _e.mock.On("EpisodeGetLastTime", ctx)}
+}
+
+func (_c *MockStore_EpisodeGetLastTime_Call) Run(run func(ctx context.Context)) *MockStore_EpisodeGetLastTime_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockStore_EpisodeGetLastTime_Call) Return(time1 time.Time, err error) *MockStore_EpisodeGetLastTime_Call {
+	_c.Call.Return(time1, err)
+	return _c
+}
+
+func (_c *MockStore_EpisodeGetLastTime_Call) RunAndReturn(run func(ctx context.Context) (time.Time, error)) *MockStore_EpisodeGetLastTime_Call {
 	_c.Call.Return(run)
 	return _c
 }

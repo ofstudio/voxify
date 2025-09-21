@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"time"
 
 	"github.com/ofstudio/voxify/internal/entities"
 )
@@ -25,6 +26,9 @@ type Store interface {
 	EpisodeListAll(ctx context.Context) ([]*entities.Episode, error)
 	// EpisodeGetByOriginalUrl returns episodes matching the given original URL.
 	EpisodeGetByOriginalUrl(ctx context.Context, url string) ([]*entities.Episode, error)
+	// EpisodeGetLastTime returns the creation time of the most recently added episode.
+	// If no episodes exist, it returns zero time.
+	EpisodeGetLastTime(ctx context.Context) (time.Time, error)
 
 	// Process methods
 
