@@ -72,6 +72,7 @@ func (a *App) Start(ctx context.Context) error {
 
 	b.RegisterHandler(bot.HandlerTypeMessageText, "start", bot.MatchTypeCommandStartOnly, handlers.CmdStart())
 	b.RegisterHandler(bot.HandlerTypeMessageText, "build", bot.MatchTypeCommand, handlers.CmdBuild())
+	b.RegisterHandler(bot.HandlerTypeMessageText, "info", bot.MatchTypeCommand, handlers.CmdInfo())
 	b.RegisterHandler(bot.HandlerTypeMessageText, "https://", bot.MatchTypePrefix, handlers.Url())
 
 	notifications := telegram.NewNotifications(a.log, b, processSrv.Out())

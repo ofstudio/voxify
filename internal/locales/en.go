@@ -36,4 +36,16 @@ Perfect for creating your own podcast collection or listening to content offline
 	MsgInvalidRequest     = "⚠️ This request is invalid."                                      // services.ErrInvalidRequest
 
 	MsgBuildSuccess = "✅ RSS feed built successfully!"
+
+	MsgFeedInfoBasic      = "📻 Podcast information\n\n<b>%s</b>\n\n%s\n\n"
+	MsgFeedInfoAuthor     = "👨‍💻 By %s\n"
+	MsgFeedInfoLanguage   = "🌐 Language: %s\n"
+	MsgFeedInfoCategories = "📚 Categories: %s\n"
+	MsgFeedInfoKeywords   = "🔑 Keywords: %s\n"
+	MsgFeedInfoArtwork    = "🖼️ <a href=\"%s\">Artwork</a>\n"
+	MsgFeedInfoWebsite    = "🔗 <a href=\"%s\">Website</a>\n"
+	MsgFeedInfoEpisodes   = "🎧 Number of episodes: %d\n"
+	MsgFeedInfoNoEpisodes = "📭 No episodes yet\n"
+	MsgFeedInfoExplicit   = "🔞 Explicit content\n"
+	MsgFeedInfoRSS        = "\n📡 RSS: %s"
 )

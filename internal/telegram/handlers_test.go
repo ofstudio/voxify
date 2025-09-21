@@ -128,6 +128,94 @@ func (suite *TestHandlersSuite) TestError() {
 	})
 }
 
+// TestGetInfoMessage tests the getInfoMessage method
+func (suite *TestHandlersSuite) TestGetInfoMessage() {
+	suite.Run("Success", func() {
+		// Arrange: use isolated mock and handlers
+		mockFeeder := mocks.NewMockFeeder(suite.T())
+		reqCh := make(chan entities.Request, 1)
+		h := NewHandlers(suite.cfg, suite.log, reqCh, mockFeeder)
+
+		feed := &entities.Feed{
+			Title:       "My podcast",
+			Description: "Awesome show",
+			Language:    "en",
+			Categories: []entities.FeedCategory{
+				{Text: "Science", Subcategories: []string{"Physics", "Astronomy"}},
+				{Text: "Technology"},
+			},
+			Keywords:     "Tech,Talks",
+			Author:       "Alice",
+			Explicit:     true,
+			WebsiteLink:  "https://site.example",
+			ImageUrl:     "https://site.example/cover.jpg",
+			EpisodeCount: 3,
+			RSSLink:      "https://site.example/rss.xml",
+		}
+		mockFeeder.On("Feed", suite.ctx).Return(feed, nil).Once()
+
+		// Act
+		msg, err := h.getInfoMessage(suite.ctx)
+
+		// Assert
+		suite.NoError(err)
+		suite.NotEmpty(msg)
+		suite.Contains(msg, "My podcast")
+		suite.Contains(msg, "Awesome show")
+		suite.Contains(msg, "By Alice")
+		suite.Contains(msg, "Language: en")
+		suite.Contains(msg, "Categories: Science, Physics, Astronomy, Technology")
+		suite.Contains(msg, "Keywords: Tech,Talks")
+		suite.Contains(msg, "<a href=\"https://site.example/cover.jpg\">Artwork</a>")
+		suite.Contains(msg, "<a href=\"https://site.example\">Website</a>")
+		suite.Contains(msg, "Number of episodes: 3")
+		suite.Contains(msg, "Explicit content")
+		suite.Contains(msg, "RSS: https://site.example/rss.xml")
+	})
+
+	suite.Run("Error", func() {
+		// Arrange: use isolated mock and handlers
+		mockFeeder := mocks.NewMockFeeder(suite.T())
+		reqCh := make(chan entities.Request, 1)
+		h := NewHandlers(suite.cfg, suite.log, reqCh, mockFeeder)
+
+		expectedErr := errors.New("feed error")
+		mockFeeder.On("Feed", suite.ctx).Return((*entities.Feed)(nil), expectedErr).Once()
+
+		// Act
+		msg, err := h.getInfoMessage(suite.ctx)
+
+		// Assert
+		suite.Error(err)
+		suite.Equal("", msg)
+		suite.Contains(err.Error(), "failed to get feed info")
+	})
+}
+
+// TestCategoriesToString tests the categoriesToString helper
+func (suite *TestHandlersSuite) TestCategoriesToString() {
+	suite.Run("WithSubcategories", func() {
+		// Arrange
+		cats := []entities.FeedCategory{
+			{Text: "Science", Subcategories: []string{"Physics", "Astronomy"}},
+			{Text: "Technology"},
+		}
+		// Act
+		res := categoriesToString(cats)
+		// Assert
+		suite.Equal("Science, Physics, Astronomy, Technology", res)
+	})
+
+	suite.Run("Empty", func() {
+		// Arrange
+		var cats []entities.FeedCategory
+		// Act
+		res := categoriesToString(cats)
+		// Assert
+		suite.Equal("", res)
+	})
+}
+
 // Run the test suite
 func TestHandlers(t *testing.T) {
 	suite.Run(t, new(TestHandlersSuite))
