@@ -8,7 +8,7 @@ interviews, and other content in podcast format.
 
 ## About
 
-Voxify transforms your favorite video content into audio-only podcast episodes that you can listen to anywhere. Simply
+Voxify transforms your favorite video content into audio-only podcast episodes that you can listen to anywhere. It's built for personal setups and small shared use—great for you, your family, or a few friends. Simply
 send YouTube links or other supported video URLs to the Telegram bot, and it will:
 
 - Download the video content using yt-dlp
@@ -17,8 +17,7 @@ send YouTube links or other supported video URLs to the Telegram bot, and it wil
 - Add episodes to your personal RSS podcast feed
 - Make the content accessible through any podcast player
 
-The bot maintains a personal RSS feed for each user, allowing you to build a custom podcast library from diverse video
-sources. Perfect for listening to educational content, tech talks, interviews, or any video content during commutes,
+The bot maintains a single RSS feed for your deployment, collecting episodes from the allowed users you configure. Perfect for listening to educational content, tech talks, interviews, or any video content during commutes,
 workouts, or while multitasking.
 
 ## Usage
@@ -31,6 +30,14 @@ workouts, or while multitasking.
     - The bot will process the video and add it to your podcast feed
     - Access your RSS feed at `https://yourdomain.com/rss.xml`
     - Subscribe to the feed in your favorite podcast player
+
+### Bot commands
+
+- /start — Shows a quick introduction and how to use the bot.
+- /info — Displays current feed details: title, description, author, language, categories, keywords, explicit flag, website and artwork links (if set), episodes count, and your RSS URL.
+- /build — Manually rebuilds the RSS feed file (rss.xml) from all stored episodes. Useful after changing feed metadata or if you need to regenerate the file. If there are no episodes yet, you'll get a notice instead.
+
+Note: Only users listed in `TELEGRAM_ALLOWED_USERS` can interact with the bot.
 
 ### Currently Supported Platforms
 
