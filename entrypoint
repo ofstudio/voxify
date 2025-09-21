@@ -1,0 +1,17 @@
+#!/bin/sh
+# Set up data directories and execute command as 'nobody' user
+set -e
+
+# Ensure required environment variables are set
+if [ -z "${DOWNLOAD_DIR}" ] || [ -z "${PUBLIC_DIR}" ] || [ -z "${DB_DIR}" ]; then
+    echo "[entrypoint] error: one or more required variables are not set: DOWNLOAD_DIR, PUBLIC_DIR, DB_DIR" >&2
+    exit 1
+fi
+
+# Create directories if they do not exist and set ownership and permissions
+mkdir -p "${DOWNLOAD_DIR}" "${PUBLIC_DIR}" "${DB_DIR}"
+chown -R nobody:nobody "${DOWNLOAD_DIR}" "${PUBLIC_DIR}" "${DB_DIR}"
+chmod 755 "${DB_DIR}" "${DOWNLOAD_DIR}" "${PUBLIC_DIR}"
+
+# Execute the command as the 'nobody' user
+exec su-exec nobody "$@"
