@@ -24,7 +24,7 @@ type TestEpisodeServiceSuite struct {
 	log          *slog.Logger
 	mockStore    *mocks.MockStore
 	mockPlatform *mocks.MockPlatform
-	mockBuilder  *mocks.MockBuilder
+	mockFeeder   *mocks.MockFeeder
 	service      *EpisodeService
 	tempDir      string
 	publicDir    string
@@ -67,7 +67,7 @@ func (suite *TestEpisodeServiceSuite) TearDownSuite() {
 func (suite *TestEpisodeServiceSuite) SetupSubTest() {
 	suite.mockStore = mocks.NewMockStore(suite.T())
 	suite.mockPlatform = mocks.NewMockPlatform(suite.T())
-	suite.mockBuilder = mocks.NewMockBuilder(suite.T())
+	suite.mockFeeder = mocks.NewMockFeeder(suite.T())
 
 	suite.service = NewEpisodeService(suite.cfg, suite.log, suite.mockStore, suite.mockPlatform)
 }

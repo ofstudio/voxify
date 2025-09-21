@@ -34,7 +34,7 @@ func (s *FeedService) Init(_ context.Context) error {
 	return nil
 }
 
-// Build implements Builder interface to generate RSS feed from all episodes.
+// Build implements Feeder interface to generate RSS feed from all episodes.
 func (s *FeedService) Build(ctx context.Context) error {
 	s.log.Info("[feed service] building podcast feed")
 
@@ -73,31 +73,21 @@ func (s *FeedService) createFeed() *feedcast.Feed {
 		explicit = feedcast.ExplicitTrue
 	}
 
-	var categories []feedcast.Category
-	if len(s.cfg.FeedCategories) > 0 {
-		categories = append(categories, feedcast.NewCategory(s.cfg.FeedCategories[0], s.cfg.FeedCategories[1:]...))
-	}
-	if len(s.cfg.FeedCategories2) > 0 {
-		categories = append(categories, feedcast.NewCategory(s.cfg.FeedCategories2[0], s.cfg.FeedCategories2[1:]...))
-	}
-	if len(s.cfg.FeedCategories3) > 0 {
-		categories = append(categories, feedcast.NewCategory(s.cfg.FeedCategories3[0], s.cfg.FeedCategories3[1:]...))
-	}
-
 	return feedcast.NewFeed(feedcast.FeedData{
 		Title:       s.cfg.FeedTitle,
 		Description: s.cfg.FeedDescription,
 		Image:       s.cfg.FeedImage,
 		Language:    s.cfg.FeedLanguage,
 		Explicit:    explicit,
-		Categories:  categories,
+		Categories:  s.getCategories(),
 	}).
 		WithLink(s.cfg.FeedLink).
 		WithItunesTitle(s.cfg.FeedTitle).
 		WithItunesSummary(s.cfg.FeedDescription).
+		WithItunesKeywords(s.cfg.FeedKeywords).
 		WithAuthor(s.cfg.FeedAuthor).
 		WithLastBuildDate(now).
-		WithGenerator("Voxify " + config.Version() + " (github.com/ofstudio/voxify)")
+		WithGenerator(s.getGenerator())
 }
 
 // createItem creates a feed item from an episode entity.
@@ -143,4 +133,74 @@ func (s *FeedService) saveFeed(feed *feedcast.Feed) error {
 	}
 
 	return nil
+}
+
+// getCategories converts a list of config.Settings categories to entities.FeedCategory.
+func (s *FeedService) getCategories() []entities.FeedCategory {
+	var categories []entities.FeedCategory
+	if len(s.cfg.FeedCategories) > 0 {
+		categories = append(categories, entities.FeedCategory{
+			Text:          s.cfg.FeedCategories[0],
+			Subcategories: s.cfg.FeedCategories[1:],
+		})
+	}
+	if len(s.cfg.FeedCategories2) > 0 {
+		categories = append(categories, entities.FeedCategory{
+			Text:          s.cfg.FeedCategories2[0],
+			Subcategories: s.cfg.FeedCategories2[1:],
+		})
+	}
+
+	if len(s.cfg.FeedCategories3) > 0 {
+		categories = append(categories, entities.FeedCategory{
+			Text:          s.cfg.FeedCategories3[0],
+			Subcategories: s.cfg.FeedCategories3[1:],
+		})
+	}
+
+	return categories
+}
+
+// getGenerator returns the feed generator string.
+func (s *FeedService) getGenerator() string {
+	return "Voxify " + config.Version() + " (github.com/ofstudio/voxify)"
+}
+
+func (s *FeedService) Feed(ctx context.Context) (*entities.Feed, error) {
+	var pubDate time.Time
+
+	// Count episodes
+	count, err := s.store.EpisodeCountAll(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to count episodes: %w", err)
+	}
+
+	// If there are episodes, get the last published date
+	if count > 0 {
+		if pubDate, err = s.store.EpisodeGetLastTime(ctx); err != nil {
+			return nil, fmt.Errorf("failed to get last episode time: %w", err)
+		}
+	}
+
+	return &entities.Feed{
+		Title:         s.cfg.FeedTitle,
+		Description:   s.cfg.FeedDescription,
+		Summary:       s.cfg.FeedDescription, // For now, using description as summary
+		Language:      s.cfg.FeedLanguage,
+		Categories:    s.getCategories(),
+		Keywords:      s.cfg.FeedKeywords,
+		Author:        s.cfg.FeedAuthor,
+		Owner:         nil, // Owner not implemented yet
+		Copyright:     "",  // Copyright not implemented yet
+		Explicit:      s.cfg.FeedIsExplicit,
+		FeedType:      entities.FeedTypeNotSet, // Feed type not implemented yet
+		FeedCompleted: false,                   // Feed completed feature not implemented yet
+		FeedBlocked:   false,                   // Feed blocked feature not implemented yet
+		WebsiteLink:   s.cfg.FeedLink,
+		RSSLink:       s.cfg.PublicUrl.JoinPath(s.cfg.FeedFileName).String(),
+		ImageUrl:      s.cfg.FeedImage,
+		Generator:     s.getGenerator(),
+		PubDate:       pubDate, // Zero time if no episodes
+		EpisodeCount:  count,
+	}, nil
 }

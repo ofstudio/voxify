@@ -16,4 +16,4 @@ packages:
     interfaces:
       Platform:
       Downloader:
-      Builder:
+      Feeder:

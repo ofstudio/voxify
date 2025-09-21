@@ -18,13 +18,13 @@ import (
 // TestProcessServiceSuite is a test suite for ProcessService
 type TestProcessServiceSuite struct {
 	suite.Suite
-	ctx         context.Context
-	cfg         *config.Settings
-	log         *slog.Logger
-	mockStore   *mocks.MockStore
-	mockDown    *mocks.MockDownloader
-	mockBuilder *mocks.MockBuilder
-	service     *ProcessService
+	ctx        context.Context
+	cfg        *config.Settings
+	log        *slog.Logger
+	mockStore  *mocks.MockStore
+	mockDown   *mocks.MockDownloader
+	mockFeeder *mocks.MockFeeder
+	service    *ProcessService
 }
 
 // SetupSuite is called once before the entire test suite runs
@@ -40,15 +40,15 @@ func (suite *TestProcessServiceSuite) SetupSuite() {
 func (suite *TestProcessServiceSuite) SetupSubTest() {
 	suite.mockStore = mocks.NewMockStore(suite.T())
 	suite.mockDown = mocks.NewMockDownloader(suite.T())
-	suite.mockBuilder = mocks.NewMockBuilder(suite.T())
+	suite.mockFeeder = mocks.NewMockFeeder(suite.T())
 
-	suite.service = NewProcessService(suite.cfg, suite.log, suite.mockStore, suite.mockDown, suite.mockBuilder)
+	suite.service = NewProcessService(suite.cfg, suite.log, suite.mockStore, suite.mockDown, suite.mockFeeder)
 }
 
 // TestNewProcessService tests the constructor
 func (suite *TestProcessServiceSuite) TestNewProcessService() {
 	// Act
-	service := NewProcessService(suite.cfg, suite.log, suite.mockStore, suite.mockDown, suite.mockBuilder)
+	service := NewProcessService(suite.cfg, suite.log, suite.mockStore, suite.mockDown, suite.mockFeeder)
 
 	// Assert
 	suite.NotNil(service)
@@ -301,7 +301,7 @@ func (suite *TestProcessServiceSuite) TestHandle() {
 
 		// Arrange - publish step
 		suite.mockStore.On("ProcessUpsert", suite.ctx, suite.matchProcessStep(entities.StepPublishing)).Return(nil)
-		suite.mockBuilder.On("Build", suite.ctx).Return(nil)
+		suite.mockFeeder.On("Build", suite.ctx).Return(nil)
 		suite.mockStore.On("ProcessUpsert", suite.ctx, suite.matchProcessStatus(entities.StatusSuccess)).Return(nil)
 
 		// Start goroutine to consume notifications
@@ -331,7 +331,7 @@ func (suite *TestProcessServiceSuite) TestHandle() {
 		// Assert - verify all mocks were called
 		suite.mockStore.AssertExpectations(suite.T())
 		suite.mockDown.AssertExpectations(suite.T())
-		suite.mockBuilder.AssertExpectations(suite.T())
+		suite.mockFeeder.AssertExpectations(suite.T())
 	})
 
 	suite.Run("ValidationFailure", func() {
@@ -421,7 +421,7 @@ func (suite *TestProcessServiceSuite) TestHandle() {
 
 		// Arrange - publish step failure
 		suite.mockStore.On("ProcessUpsert", suite.ctx, suite.matchProcessStep(entities.StepPublishing)).Return(nil)
-		suite.mockBuilder.On("Build", suite.ctx).Return(errors.New("build failed"))
+		suite.mockFeeder.On("Build", suite.ctx).Return(errors.New("build failed"))
 		suite.mockStore.On("ProcessUpsert", suite.ctx, suite.matchProcessStatusAndError(entities.StatusFailed)).Return(nil)
 
 		// Start goroutine to consume notifications
@@ -451,7 +451,7 @@ func (suite *TestProcessServiceSuite) TestHandle() {
 		// Assert
 		suite.mockStore.AssertExpectations(suite.T())
 		suite.mockDown.AssertExpectations(suite.T())
-		suite.mockBuilder.AssertExpectations(suite.T())
+		suite.mockFeeder.AssertExpectations(suite.T())
 	})
 
 	suite.Run("UpsertFailure", func() {

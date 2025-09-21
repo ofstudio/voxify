@@ -23,7 +23,8 @@ type Downloader interface {
 	Download(ctx context.Context, req entities.Request) (*entities.Episode, error)
 }
 
-// Builder is an interface for building the podcast feed.
-type Builder interface {
+// Feeder is an interface for building the podcast feed.
+type Feeder interface {
 	Build(ctx context.Context) error
+	Feed(ctx context.Context) (*entities.Feed, error)
 }

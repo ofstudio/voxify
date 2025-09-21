@@ -21,21 +21,21 @@ type ProcessService struct {
 	log        *slog.Logger
 	store      Store
 	downloader Downloader
-	builder    Builder
+	feeder     Feeder
 	in         chan entities.Request
-	notify     chan entities.Process
+	out        chan entities.Process
 }
 
 // NewProcessService creates a new ProcessService instance.
-func NewProcessService(cfg *config.Settings, log *slog.Logger, s Store, d Downloader, b Builder) *ProcessService {
+func NewProcessService(cfg *config.Settings, log *slog.Logger, s Store, d Downloader, f Feeder) *ProcessService {
 	return &ProcessService{
 		cfg:        cfg,
 		log:        log,
 		store:      s,
 		downloader: d,
-		builder:    b,
+		feeder:     f,
 		in:         make(chan entities.Request),
-		notify:     make(chan entities.Process, notifyBuffer),
+		out:        make(chan entities.Process, notifyBuffer),
 	}
 }
 
@@ -46,7 +46,7 @@ func (s *ProcessService) In() chan<- entities.Request {
 
 // Out returns the output channel for sending notifications about process completion.
 func (s *ProcessService) Out() <-chan entities.Process {
-	return s.notify
+	return s.out
 }
 
 // Init initializes the service before starting.
@@ -141,7 +141,7 @@ func (s *ProcessService) handle(ctx context.Context, req entities.Request) {
 		s.fail(ctx, process, err)
 		return
 	}
-	if err = s.builder.Build(ctx); err != nil {
+	if err = s.feeder.Build(ctx); err != nil {
 		s.fail(ctx, process, err)
 		return
 	}
@@ -183,7 +183,7 @@ func (s *ProcessService) validate(ctx context.Context, process *entities.Process
 // sendNotify sends a notification.
 func (s *ProcessService) sendNotify(ctx context.Context, process *entities.Process) {
 	select {
-	case s.notify <- *process: // Successfully sent
+	case s.out <- *process: // Successfully sent
 	case <-time.After(time.Second * 5): // Channel full
 		s.log.Error("[process service] notification buffer full, dropping notification",
 			"process", process.LogValue())

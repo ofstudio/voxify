@@ -330,6 +330,69 @@ func (suite *TestFeedServiceSuite) TestBuild_EdgeCases() {
 	})
 }
 
+// TestFeed method
+func (suite *TestFeedServiceSuite) TestFeed() {
+	suite.Run("WithEpisodes", func() {
+		// Arrange
+		now := time.Now().UTC()
+		suite.mockStore.On("EpisodeCountAll", suite.ctx).Return(2, nil)
+		suite.mockStore.On("EpisodeGetLastTime", suite.ctx).Return(now, nil)
+
+		// Act
+		feed, err := suite.service.Feed(suite.ctx)
+
+		// Assert
+		suite.Require().NoError(err)
+		suite.Equal(2, feed.EpisodeCount)
+		suite.True(feed.PubDate.Equal(now))
+		suite.Equal(suite.cfg.FeedTitle, feed.Title)
+		suite.Equal(suite.cfg.FeedDescription, feed.Description)
+		suite.Equal(suite.cfg.PublicUrl.JoinPath(suite.cfg.FeedFileName).String(), feed.RSSLink)
+	})
+
+	suite.Run("ZeroEpisodes", func() {
+		// Arrange
+		suite.mockStore.On("EpisodeCountAll", suite.ctx).Return(0, nil)
+
+		// Act
+		feed, err := suite.service.Feed(suite.ctx)
+
+		// Assert
+		suite.Require().NoError(err)
+		suite.Equal(0, feed.EpisodeCount)
+		suite.True(feed.PubDate.IsZero())
+	})
+
+	suite.Run("CountError", func() {
+		// Arrange
+		expectedErr := errors.New("count failed")
+		suite.mockStore.On("EpisodeCountAll", suite.ctx).Return(0, expectedErr)
+
+		// Act
+		_, err := suite.service.Feed(suite.ctx)
+
+		// Assert
+		suite.Error(err)
+		suite.Contains(err.Error(), "failed to count episodes")
+		suite.ErrorIs(err, expectedErr)
+	})
+
+	suite.Run("LastTimeError", func() {
+		// Arrange
+		expectedErr := errors.New("last failed")
+		suite.mockStore.On("EpisodeCountAll", suite.ctx).Return(1, nil)
+		suite.mockStore.On("EpisodeGetLastTime", suite.ctx).Return(time.Time{}, expectedErr)
+
+		// Act
+		_, err := suite.service.Feed(suite.ctx)
+
+		// Assert
+		suite.Error(err)
+		suite.Contains(err.Error(), "failed to get last episode time")
+		suite.ErrorIs(err, expectedErr)
+	})
+}
+
 // TestFeedService runs the test suite
 func TestFeedService(t *testing.T) {
 	suite.Run(t, new(TestFeedServiceSuite))
