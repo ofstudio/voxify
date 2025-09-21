@@ -12,12 +12,10 @@ services:
     restart: always
 
     volumes:
-      # Replace `</path/to/data>` with the path to the path on local machine
+      # Replace </path/to/voxify/data> with the path to voxify data directory on local machine
       # where the bot will store its database, public directory and downloads
       # Make sure this directory exists and is writable by the Docker container
-      - </path/to/data>/db:/data/db
-      - </path/to/data>/public:/data/public
-      - </path/to/data>/downloads:/data/downloads
+      - </path/to/data>:/data
 
     environment:
       # See `.env-example` file for reference
@@ -108,7 +106,7 @@ services:
   #
   # Make sure to replace:
   #  - <my@email.org> with your email address for Let's Encrypt notifications
-  #  - </path/to/data> with the path to the directory on your local machine
+  #  - </path/to/letsencrypt> with the path to the letsencrypt certificates data directory on local machine
   #  - <mydomain.com> with your actual domain name
 
   traefik:
@@ -125,14 +123,15 @@ services:
       - "443:443"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      # Replace </path/to/data> with the path to the directory on your local machine
-      - </path/to/data>/letsencrypt:/letsencrypt
+      # Replace </path/to/letsencrypt/data> with the path
+      # to the letsencrypt certificates data directory on local machine
+      - </path/to/letsencrypt/data>:/letsencrypt
 
   nginx:
     image: nginx:alpine
     volumes:
-      # Replace </path/to/data> with the path to the directory on your local machine
-      - </path/to/data>/public:/usr/share/nginx/html:ro
+      # Replace </path/to/voxify/data> with the path to voxify data directory on local machine
+      - </path/to/voxify/data>/public:/usr/share/nginx/html:ro
     labels:
       - "traefik.enable=true"
       # Replace <mydomain.com> with your actual domain name
