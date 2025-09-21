@@ -179,6 +179,66 @@ func (_c *MockStore_Commit_Call) RunAndReturn(run func() error) *MockStore_Commi
 	return _c
 }
 
+// EpisodeCountAll provides a mock function for the type MockStore
+func (_mock *MockStore) EpisodeCountAll(ctx context.Context) (int, error) {
+	ret := _mock.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for EpisodeCountAll")
+	}
+
+	var r0 int
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context) (int, error)); ok {
+		return returnFunc(ctx)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context) int); ok {
+		r0 = returnFunc(ctx)
+	} else {
+		r0 = ret.Get(0).(int)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = returnFunc(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockStore_EpisodeCountAll_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'EpisodeCountAll'
+type MockStore_EpisodeCountAll_Call struct {
+	*mock.Call
+}
+
+// EpisodeCountAll is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockStore_Expecter) EpisodeCountAll(ctx interface{}) *MockStore_EpisodeCountAll_Call {
+	return &MockStore_EpisodeCountAll_Call{Call: _e.mock.On("EpisodeCountAll", ctx)}
+}
+
+func (_c *MockStore_EpisodeCountAll_Call) Run(run func(ctx context.Context)) *MockStore_EpisodeCountAll_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockStore_EpisodeCountAll_Call) Return(n int, err error) *MockStore_EpisodeCountAll_Call {
+	_c.Call.Return(n, err)
+	return _c
+}
+
+func (_c *MockStore_EpisodeCountAll_Call) RunAndReturn(run func(ctx context.Context) (int, error)) *MockStore_EpisodeCountAll_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // EpisodeCreate provides a mock function for the type MockStore
 func (_mock *MockStore) EpisodeCreate(ctx context.Context, episode *entities.Episode) error {
 	ret := _mock.Called(ctx, episode)

@@ -24,6 +24,8 @@ type Store interface {
 	EpisodeCreate(ctx context.Context, episode *entities.Episode) error
 	// EpisodeListAll returns all episodes from the store in descending order by creation date.
 	EpisodeListAll(ctx context.Context) ([]*entities.Episode, error)
+	// EpisodeCountAll returns the total count of episodes in the store.
+	EpisodeCountAll(ctx context.Context) (int, error)
 	// EpisodeGetByOriginalUrl returns episodes matching the given original URL.
 	EpisodeGetByOriginalUrl(ctx context.Context, url string) ([]*entities.Episode, error)
 	// EpisodeGetLastTime returns the creation time of the most recently added episode.

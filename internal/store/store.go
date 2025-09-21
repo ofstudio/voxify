@@ -144,6 +144,18 @@ func (s *SQLiteStore) EpisodeListAll(ctx context.Context) ([]*entities.Episode, 
 	return episodes, nil
 }
 
+// EpisodeCountAll returns the total count of episodes in the database
+func (s *SQLiteStore) EpisodeCountAll(ctx context.Context) (int, error) {
+	query := `SELECT COUNT(*) FROM episodes`
+
+	var count int
+	err := s.execer.QueryRowContext(ctx, query).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count episodes: %w", err)
+	}
+	return count, nil
+}
+
 // EpisodeGetByOriginalUrl returns episodes by original URL
 func (s *SQLiteStore) EpisodeGetByOriginalUrl(ctx context.Context, url string) ([]*entities.Episode, error) {
 	query := `

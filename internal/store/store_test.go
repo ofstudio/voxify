@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -20,43 +21,30 @@ type TestSQLiteStoreSuite struct {
 	ctx   context.Context
 }
 
-// SetupSuite is called once before the entire test suite runs
-func (suite *TestSQLiteStoreSuite) SetupSuite() {
+// SetupTest is called once before each test start
+func (suite *TestSQLiteStoreSuite) SetupTest() {
+	suite.SetupSubTest()
+}
+
+// SetupSubTest is called before each subtest in the suite
+func (suite *TestSQLiteStoreSuite) SetupSubTest() {
 	var err error
-	// Use in-memory SQLite database
 	suite.db, err = NewSQLite(":memory:", 1)
 	suite.Require().NoError(err, "Failed to create in-memory database")
-}
-
-// TearDownSuite is called once after the entire test suite runs
-func (suite *TestSQLiteStoreSuite) TearDownSuite() {
-	if suite.db != nil {
-		suite.Require().NoError(suite.db.Close())
-	}
-}
-
-// SetupTest is called before each test method
-func (suite *TestSQLiteStoreSuite) SetupTest() {
 	suite.store = NewSQLiteStore(suite.db)
 	suite.ctx = context.Background()
 }
 
-// TearDownTest is called after each test in the suite
+// TearDownTest is called after each test in the suite completes
 func (suite *TestSQLiteStoreSuite) TearDownTest() {
-	suite.cleanupTestData()
+	suite.TearDownSubTest()
 }
 
 // TearDownSubTest is called after each subtest in the suite
 func (suite *TestSQLiteStoreSuite) TearDownSubTest() {
-	suite.cleanupTestData()
-}
-
-func (suite *TestSQLiteStoreSuite) cleanupTestData() {
-	// Clean up test data
-	_, err := suite.db.Exec("DELETE FROM processes")
-	suite.Require().NoError(err)
-	_, err = suite.db.Exec("DELETE FROM episodes")
-	suite.Require().NoError(err)
+	if suite.db != nil {
+		suite.Require().NoError(suite.db.Close())
+	}
 }
 
 // Test Episode methods
@@ -823,9 +811,6 @@ func (suite *TestSQLiteStoreSuite) TestEpisodeGetLastTime() {
 	})
 
 	suite.Run("NoEpisodes", func() {
-		// Ensure no episodes exist
-		suite.cleanupTestData()
-
 		// Act
 		lastTime, err := suite.store.EpisodeGetLastTime(suite.ctx)
 
@@ -843,12 +828,54 @@ func (suite *TestSQLiteStoreSuite) TestEpisodeGetLastTime() {
 		// Assert
 		suite.Error(err, "Should return error when database is closed")
 		suite.True(lastTime.IsZero(), "returned time should be zero value on error")
+	})
+}
 
-		// Reopen the database for subsequent tests
-		var errOpen error
-		suite.db, errOpen = NewSQLite(":memory:", 1)
-		suite.Require().NoError(errOpen, "Failed to reopen in-memory database")
-		suite.store = NewSQLiteStore(suite.db)
+func (suite *TestSQLiteStoreSuite) TestEpisodeCountAll() {
+	suite.Run("Multiple", func() {
+		// Insert several episodes directly (author is required)
+		for i := 1; i <= 3; i++ {
+			_, err := suite.db.ExecContext(suite.ctx, `
+				INSERT INTO episodes (title, media_file, media_type, author, original_url, canonical_url)
+				VALUES (?, ?, ?, ?, ?, ?)
+			`,
+				fmt.Sprintf("Ep %d", i),
+				fmt.Sprintf("ep%d.mp3", i),
+				"audio/mpeg",
+				fmt.Sprintf("author%d", i),
+				fmt.Sprintf("https://example.com/%d", i),
+				fmt.Sprintf("https://example.com/%d", i),
+			)
+			suite.Require().NoError(err)
+		}
+
+		// Act
+		count, err := suite.store.EpisodeCountAll(suite.ctx)
+
+		// Assert
+		suite.Require().NoError(err)
+		suite.Equal(3, count)
+	})
+
+	suite.Run("Zero", func() {
+		// Act
+		count, err := suite.store.EpisodeCountAll(suite.ctx)
+
+		// Assert
+		suite.Require().NoError(err)
+		suite.Equal(0, count)
+	})
+
+	suite.Run("DatabaseError", func() {
+		// Simulate database error by closing the DB connection
+		suite.Require().NoError(suite.db.Close())
+
+		// Act
+		count, err := suite.store.EpisodeCountAll(suite.ctx)
+
+		// Assert
+		suite.Error(err)
+		suite.Equal(0, count)
 	})
 }
 
