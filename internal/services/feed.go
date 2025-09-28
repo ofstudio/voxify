@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -9,19 +10,20 @@ import (
 	"time"
 
 	"github.com/ofstudio/voxify/internal/config"
-	"github.com/ofstudio/voxify/internal/entities"
+	"github.com/ofstudio/voxify/internal/domain"
+	"github.com/ofstudio/voxify/internal/templates"
 	"github.com/ofstudio/voxify/pkg/feedcast"
 )
 
-// FeedService builds RSS podcast feed from episodes.
+// FeedService builds RSS podcast FeedInfo from episodes.
 type FeedService struct {
-	cfg   *config.Settings
+	cfg   config.Settings
 	log   *slog.Logger
-	store Store
+	store domain.Store
 }
 
 // NewFeedService creates a new FeedService instance.
-func NewFeedService(cfg *config.Settings, log *slog.Logger, s Store) *FeedService {
+func NewFeedService(cfg config.Settings, log *slog.Logger, s domain.Store) *FeedService {
 	return &FeedService{
 		cfg:   cfg,
 		log:   log,
@@ -30,25 +32,92 @@ func NewFeedService(cfg *config.Settings, log *slog.Logger, s Store) *FeedServic
 }
 
 // Init checks the service dependencies and prepares the environment.
-func (s *FeedService) Init(_ context.Context) error {
+func (s *FeedService) Init(ctx context.Context) error {
+	if templates.LandingTemplate == nil {
+		return errors.New("landing page template is not initialized")
+	}
+	if err := s.Build(ctx); err != nil {
+		return err
+	}
 	return nil
 }
 
-// Build implements Feeder interface to generate RSS feed from all episodes.
+// Build implements Feeder interface to generate RSS FeedInfo from all episodes and update landing page
 func (s *FeedService) Build(ctx context.Context) error {
+	// Get all episodes from store
+	episodes, err := s.store.EpisodeGet(ctx, 0, 0)
+	if err != nil {
+		return fmt.Errorf("%w: %w", domain.ErrEpisodeGet, err)
+	}
+	// Build RSS feed
+	if err = s.buildRss(ctx, episodes); err != nil {
+		return fmt.Errorf("failed to build rss feed: %w", err)
+	}
+	// Build landing page
+	if err = s.buildLanding(ctx, episodes); err != nil {
+		return fmt.Errorf("failed to build landing page: %w", err)
+	}
+
+	return nil
+}
+
+func (s *FeedService) Info(ctx context.Context) (*domain.FeedInfo, error) {
+	var pubDate time.Time
+
+	// Count episodes
+	count, err := s.store.EpisodeCount(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", domain.ErrEpisodeCount, err)
+	}
+
+	// If there are episodes, get the last published
+	if count > 0 {
+		recent, err := s.store.EpisodeGet(ctx, 1, 0)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %w", domain.ErrEpisodeGet, err)
+		}
+		if len(recent) > 0 {
+			pubDate = recent[0].CreatedAt
+		}
+	}
+
+	return s.feedInfo(count, pubDate), nil
+}
+
+func (s *FeedService) feedInfo(episodeCount int, pubDate time.Time) *domain.FeedInfo {
+	return &domain.FeedInfo{
+		Title:         s.cfg.FeedTitle,
+		Description:   s.cfg.FeedDescription,
+		Summary:       s.cfg.FeedDescription, // For now, using description as summary
+		Language:      s.cfg.FeedLanguage,
+		Categories:    s.getCategories(),
+		Keywords:      s.cfg.FeedKeywords,
+		Author:        s.cfg.FeedAuthor,
+		Owner:         nil, // Owner not implemented yet
+		Copyright:     "",  // Copyright not implemented yet
+		Explicit:      s.cfg.FeedIsExplicit,
+		FeedType:      domain.FeedTypeNotSet, // Feed type not implemented yet
+		FeedCompleted: false,                 // Feed completed feature not implemented yet
+		FeedBlocked:   false,                 // Feed blocked feature not implemented yet
+		WebsiteLink:   s.cfg.FeedLink,
+		RSSLink:       s.cfg.PublicUrl.JoinPath(s.cfg.FeedFileName).String(),
+		ImageUrl:      s.cfg.FeedImage,
+		Generator:     s.getGenerator(),
+		PubDate:       pubDate, // Zero time if no episodes
+		EpisodeCount:  episodeCount,
+	}
+}
+
+func (s *FeedService) buildRss(ctx context.Context, episodes []*domain.Episode) error {
 	s.log.Info("[feed service] building podcast feed")
 
-	// Get all episodes from store
-	episodes, err := s.store.EpisodeListAll(ctx)
-	if err != nil {
-		return fmt.Errorf("%w: %w", ErrEpisodeListAll, err)
-	}
-	if len(episodes) == 0 {
-		return ErrEmptyFeed
-	}
-
 	// Create podcast feed
-	feed := s.createFeed().WithPubDate(episodes[0].CreatedAt)
+	feed := s.createFeed()
+
+	// Add publication date if there are episodes
+	if len(episodes) > 0 {
+		feed.WithPubDate(episodes[0].CreatedAt)
+	}
 
 	// Add episodes to feed
 	for _, episode := range episodes {
@@ -56,8 +125,8 @@ func (s *FeedService) Build(ctx context.Context) error {
 	}
 
 	// Write feed to file
-	if err = s.saveFeed(feed); err != nil {
-		return fmt.Errorf("%w: %w", ErrFeedSave, err)
+	if err := s.saveFeed(feed); err != nil {
+		return fmt.Errorf("%w: %w", domain.ErrFeedSave, err)
 	}
 
 	s.log.Info("[feed service] podcast feed built", "episodes_count", len(episodes))
@@ -65,7 +134,7 @@ func (s *FeedService) Build(ctx context.Context) error {
 	return nil
 }
 
-// createFeed creates and configures the main podcast feed.
+// createFeed creates and configures the main podcast FeedInfo.
 func (s *FeedService) createFeed() *feedcast.Feed {
 	now := time.Now()
 	explicit := feedcast.ExplicitFalse
@@ -90,9 +159,8 @@ func (s *FeedService) createFeed() *feedcast.Feed {
 		WithGenerator(s.getGenerator())
 }
 
-// createItem creates a feed item from an episode entity.
-func (s *FeedService) createItem(episode *entities.Episode) *feedcast.Item {
-
+// createItem creates a FeedInfo item from an Episode entity.
+func (s *FeedService) createItem(episode *domain.Episode) *feedcast.Item {
 	// Create item
 	mediaUrl := s.cfg.PublicUrl.JoinPath(episode.MediaFile).String()
 	item := feedcast.NewItem(feedcast.ItemData{
@@ -116,7 +184,7 @@ func (s *FeedService) createItem(episode *entities.Episode) *feedcast.Item {
 	return item
 }
 
-// saveFeed writes the RSS feed to the configured file path.
+// saveFeed writes the RSS FeedInfo to the configured file path.
 func (s *FeedService) saveFeed(feed *feedcast.Feed) error {
 
 	// Create or overwrite feed file
@@ -136,23 +204,23 @@ func (s *FeedService) saveFeed(feed *feedcast.Feed) error {
 }
 
 // getCategories converts a list of config.Settings categories to entities.FeedCategory.
-func (s *FeedService) getCategories() []entities.FeedCategory {
-	var categories []entities.FeedCategory
+func (s *FeedService) getCategories() []domain.FeedCategory {
+	var categories []domain.FeedCategory
 	if len(s.cfg.FeedCategories) > 0 {
-		categories = append(categories, entities.FeedCategory{
+		categories = append(categories, domain.FeedCategory{
 			Text:          s.cfg.FeedCategories[0],
 			Subcategories: s.cfg.FeedCategories[1:],
 		})
 	}
 	if len(s.cfg.FeedCategories2) > 0 {
-		categories = append(categories, entities.FeedCategory{
+		categories = append(categories, domain.FeedCategory{
 			Text:          s.cfg.FeedCategories2[0],
 			Subcategories: s.cfg.FeedCategories2[1:],
 		})
 	}
 
 	if len(s.cfg.FeedCategories3) > 0 {
-		categories = append(categories, entities.FeedCategory{
+		categories = append(categories, domain.FeedCategory{
 			Text:          s.cfg.FeedCategories3[0],
 			Subcategories: s.cfg.FeedCategories3[1:],
 		})
@@ -161,46 +229,49 @@ func (s *FeedService) getCategories() []entities.FeedCategory {
 	return categories
 }
 
-// getGenerator returns the feed generator string.
+// getGenerator returns the FeedInfo generator string.
 func (s *FeedService) getGenerator() string {
 	return "Voxify " + config.Version() + " (github.com/ofstudio/voxify)"
 }
 
-func (s *FeedService) Feed(ctx context.Context) (*entities.Feed, error) {
+// buildLanding generates or updates the landing page HTML file.
+func (s *FeedService) buildLanding(ctx context.Context, episodes []*domain.Episode) error {
+	if templates.LandingTemplate == nil {
+		return errors.New("landing page template is not initialized")
+
+	}
+	s.log.Info("[feed service] building landing page")
+
 	var pubDate time.Time
+	if len(episodes) > 0 {
+		pubDate = episodes[0].CreatedAt
+	}
 
-	// Count episodes
-	count, err := s.store.EpisodeCountAll(ctx)
+	// Get feed info
+	feed := s.feedInfo(len(episodes), pubDate)
+
+	// Prepare data for template
+	data := struct {
+		Feed     *domain.FeedInfo
+		Episodes []*domain.Episode
+	}{
+		Feed:     feed,
+		Episodes: episodes,
+	}
+
+	// Create or overwrite landing page file
+	file, err := os.Create(filepath.Join(s.cfg.PublicDir, "index.html"))
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", ErrEpisodeCountAll, err)
+		return fmt.Errorf("failed to create landing page file: %w", err)
+	}
+	//goland:noinspection GoUnhandledErrorResult
+	defer file.Close()
+
+	// Execute template and write to file
+	if err = templates.LandingTemplate.Execute(file, data); err != nil {
+		return fmt.Errorf("failed to execute landing page template: %w", err)
 	}
 
-	// If there are episodes, get the last published date
-	if count > 0 {
-		if pubDate, err = s.store.EpisodeGetLastTime(ctx); err != nil {
-			return nil, fmt.Errorf("%w: %w", ErrEpisodeGetLastTime, err)
-		}
-	}
-
-	return &entities.Feed{
-		Title:         s.cfg.FeedTitle,
-		Description:   s.cfg.FeedDescription,
-		Summary:       s.cfg.FeedDescription, // For now, using description as summary
-		Language:      s.cfg.FeedLanguage,
-		Categories:    s.getCategories(),
-		Keywords:      s.cfg.FeedKeywords,
-		Author:        s.cfg.FeedAuthor,
-		Owner:         nil, // Owner not implemented yet
-		Copyright:     "",  // Copyright not implemented yet
-		Explicit:      s.cfg.FeedIsExplicit,
-		FeedType:      entities.FeedTypeNotSet, // Feed type not implemented yet
-		FeedCompleted: false,                   // Feed completed feature not implemented yet
-		FeedBlocked:   false,                   // Feed blocked feature not implemented yet
-		WebsiteLink:   s.cfg.FeedLink,
-		RSSLink:       s.cfg.PublicUrl.JoinPath(s.cfg.FeedFileName).String(),
-		ImageUrl:      s.cfg.FeedImage,
-		Generator:     s.getGenerator(),
-		PubDate:       pubDate, // Zero time if no episodes
-		EpisodeCount:  count,
-	}, nil
+	s.log.Info("[feed service] landing page built", "episodes_count", len(episodes))
+	return nil
 }

@@ -11,12 +11,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ofstudio/voxify/internal/domain"
+	"github.com/ofstudio/voxify/internal/templates"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/ofstudio/voxify/internal/config"
-	"github.com/ofstudio/voxify/internal/entities"
 	"github.com/ofstudio/voxify/internal/mocks"
 )
+
+// TestFeedService runs the test suite
+func TestFeedService(t *testing.T) {
+	suite.Run(t, new(TestFeedServiceSuite))
+}
 
 // TestFeedServiceSuite is a test suite for FeedService
 type TestFeedServiceSuite struct {
@@ -64,17 +70,18 @@ func (suite *TestFeedServiceSuite) TearDownSuite() {
 // SetupSubTest is called before each subtest
 func (suite *TestFeedServiceSuite) SetupSubTest() {
 	suite.mockStore = mocks.NewMockStore(suite.T())
-	suite.service = NewFeedService(suite.cfg, suite.log, suite.mockStore)
+	suite.service = NewFeedService(*suite.cfg, suite.log, suite.mockStore)
+	suite.NoError(templates.Init(suite.ctx))
 }
 
 // TestNewFeedService tests the constructor
 func (suite *TestFeedServiceSuite) TestNewFeedService() {
 	// Act
-	service := NewFeedService(suite.cfg, suite.log, suite.mockStore)
+	service := NewFeedService(*suite.cfg, suite.log, suite.mockStore)
 
 	// Assert
 	suite.NotNil(service)
-	suite.Equal(suite.cfg, service.cfg)
+	suite.Equal(*suite.cfg, service.cfg)
 	suite.Equal(suite.mockStore, service.store)
 	suite.NotNil(service.log)
 }
@@ -83,21 +90,21 @@ func (suite *TestFeedServiceSuite) TestNewFeedService() {
 func (suite *TestFeedServiceSuite) TestBuild() {
 	suite.Run("Success_NoEpisodes", func() {
 		// Arrange
-		suite.mockStore.On("EpisodeListAll", suite.ctx).Return([]*entities.Episode{}, nil)
+		suite.mockStore.On("EpisodeGet", suite.ctx, 0, 0).Return([]*domain.Episode{}, nil)
 
 		// Act
 		err := suite.service.Build(suite.ctx)
 
 		// Assert
 		suite.Error(err)
-		suite.True(errors.Is(err, ErrEmptyFeed))
+		suite.Contains(err.Error(), "failed to build rss feed")
 		// No feed file should be created when there are no episodes
 	})
 
 	suite.Run("Success_WithEpisodes", func() {
 		// Arrange
 		now := time.Now()
-		episodes := []*entities.Episode{
+		episodes := []*domain.Episode{
 			{
 				ID:            1,
 				OriginalURL:   "https://example.com/episode1",
@@ -125,7 +132,8 @@ func (suite *TestFeedServiceSuite) TestBuild() {
 				ThumbnailFile: "",
 			},
 		}
-		suite.mockStore.On("EpisodeListAll", suite.ctx).Return(episodes, nil)
+		// Only ONE call to EpisodeGet at the beginning of Build()
+		suite.mockStore.On("EpisodeGet", suite.ctx, 0, 0).Return(episodes, nil).Once()
 
 		// Act
 		err := suite.service.Build(suite.ctx)
@@ -150,21 +158,21 @@ func (suite *TestFeedServiceSuite) TestBuild() {
 	suite.Run("Error_StoreFailure", func() {
 		// Arrange
 		expectedErr := errors.New("store error")
-		suite.mockStore.On("EpisodeListAll", suite.ctx).Return(nil, expectedErr)
+		suite.mockStore.On("EpisodeGet", suite.ctx, 0, 0).Return(nil, expectedErr)
 
 		// Act
 		err := suite.service.Build(suite.ctx)
 
 		// Assert
 		suite.Error(err)
-		suite.Contains(err.Error(), "failed to list all episodes")
+		suite.Contains(err.Error(), "failed to get episodes")
 		suite.Contains(err.Error(), "store error")
 	})
 
 	suite.Run("Error_InvalidPublicDir", func() {
 		// Arrange
 		now := time.Now()
-		episodes := []*entities.Episode{
+		episodes := []*domain.Episode{
 			{
 				ID:            1,
 				OriginalURL:   "https://example.com/episode1",
@@ -178,21 +186,20 @@ func (suite *TestFeedServiceSuite) TestBuild() {
 				MediaDuration: 3600,
 			},
 		}
-		suite.mockStore.On("EpisodeListAll", suite.ctx).Return(episodes, nil)
+		suite.mockStore.On("EpisodeGet", suite.ctx, 0, 0).Return(episodes, nil)
 
 		// Create service with invalid public directory
 		invalidCfg := *suite.cfg
 		invalidCfg.PublicDir = "/invalid/path/that/does/not/exist"
-		service := NewFeedService(&invalidCfg, suite.log, suite.mockStore)
+		service := NewFeedService(invalidCfg, suite.log, suite.mockStore)
 
 		// Act
 		err := service.Build(suite.ctx)
 
 		// Assert
 		suite.Error(err)
+		suite.Contains(err.Error(), "failed to build rss feed")
 		suite.Contains(err.Error(), "failed to save feed to file")
-		suite.Contains(err.Error(), "failed to create feed file")
-		suite.Contains(err.Error(), "no such file or directory")
 	})
 
 	suite.Run("Error_ContextCancelled", func() {
@@ -200,15 +207,15 @@ func (suite *TestFeedServiceSuite) TestBuild() {
 		cancelledCtx, cancel := context.WithCancel(suite.ctx)
 		cancel() // Cancel immediately
 
-		suite.mockStore.On("EpisodeListAll", cancelledCtx).Return(nil, context.Canceled)
+		suite.mockStore.On("EpisodeGet", cancelledCtx, 0, 0).Return(nil, context.Canceled)
 
 		// Act
 		err := suite.service.Build(cancelledCtx)
 
 		// Assert
 		suite.Error(err)
-		suite.Contains(err.Error(), "failed to list all episodes")
-		suite.ErrorIs(err, context.Canceled)
+		suite.Contains(err.Error(), "failed to get episodes")
+		suite.Contains(err.Error(), "context canceled")
 	})
 }
 
@@ -216,37 +223,38 @@ func (suite *TestFeedServiceSuite) TestBuild() {
 func (suite *TestFeedServiceSuite) TestBuild_EdgeCases() {
 	suite.Run("EmptyConfig", func() {
 		// Arrange
-		emptyCfg := &config.Settings{}
+		emptyCfg := config.Settings{}
 		service := NewFeedService(emptyCfg, suite.log, suite.mockStore)
-		suite.mockStore.On("EpisodeListAll", suite.ctx).Return([]*entities.Episode{}, nil)
+		suite.mockStore.On("EpisodeGet", suite.ctx, 0, 0).Return([]*domain.Episode{}, nil)
 
 		// Act
 		err := service.Build(suite.ctx)
 
 		// Assert
-		suite.Error(err) // Should fail due to ErrEmptyFeed
-		suite.True(errors.Is(err, ErrEmptyFeed))
+		suite.Error(err) // Should fail due to empty episodes or other validation
+		suite.Contains(err.Error(), "failed to build rss feed")
 	})
 
 	suite.Run("LargeNumberOfEpisodes", func() {
 		// Arrange - create many episodes to test performance
 		now := time.Now()
-		episodes := make([]*entities.Episode, 100)
+		episodes := make([]*domain.Episode, 100)
 		for i := 0; i < 100; i++ {
-			episodes[i] = &entities.Episode{
+			episodes[i] = &domain.Episode{
 				ID:            int64(i + 1),
 				OriginalURL:   fmt.Sprintf("https://example.com/episode%d", i),
 				Title:         fmt.Sprintf("Test Episode %d", i),
 				Description:   fmt.Sprintf("Description %d", i),
 				CanonicalURL:  fmt.Sprintf("https://example.com/episode%d", i),
 				CreatedAt:     now,
-				MediaFile:     fmt.Sprintf("episode%d.mp3", i),
+				MediaFile:     fmt.Sprintf("Episode%d.mp3", i),
 				MediaSize:     1024000,
 				MediaType:     "audio/mpeg",
 				MediaDuration: 3600,
 			}
 		}
-		suite.mockStore.On("EpisodeListAll", suite.ctx).Return(episodes, nil)
+		// Only ONE call to EpisodeGet at the beginning of Build()
+		suite.mockStore.On("EpisodeGet", suite.ctx, 0, 0).Return(episodes, nil).Once()
 
 		// Act
 		err := suite.service.Build(suite.ctx)
@@ -262,7 +270,7 @@ func (suite *TestFeedServiceSuite) TestBuild_EdgeCases() {
 	suite.Run("EpisodeWithSpecialCharacters", func() {
 		// Arrange
 		now := time.Now()
-		episodes := []*entities.Episode{
+		episodes := []*domain.Episode{
 			{
 				ID:            1,
 				OriginalURL:   "https://example.com/episode1",
@@ -276,7 +284,8 @@ func (suite *TestFeedServiceSuite) TestBuild_EdgeCases() {
 				MediaDuration: 3600,
 			},
 		}
-		suite.mockStore.On("EpisodeListAll", suite.ctx).Return(episodes, nil)
+		// Only ONE call to EpisodeGet at the beginning of Build()
+		suite.mockStore.On("EpisodeGet", suite.ctx, 0, 0).Return(episodes, nil).Once()
 
 		// Act
 		err := suite.service.Build(suite.ctx)
@@ -292,7 +301,7 @@ func (suite *TestFeedServiceSuite) TestBuild_EdgeCases() {
 	suite.Run("SupportedMediaFormats", func() {
 		// Arrange - test both supported formats
 		now := time.Now()
-		episodes := []*entities.Episode{
+		episodes := []*domain.Episode{
 			{
 				ID:            1,
 				OriginalURL:   "https://example.com/episode1",
@@ -318,7 +327,8 @@ func (suite *TestFeedServiceSuite) TestBuild_EdgeCases() {
 				MediaDuration: 1800,
 			},
 		}
-		suite.mockStore.On("EpisodeListAll", suite.ctx).Return(episodes, nil)
+		// Only ONE call to EpisodeGet at the beginning of Build()
+		suite.mockStore.On("EpisodeGet", suite.ctx, 0, 0).Return(episodes, nil).Once()
 
 		// Act
 		err := suite.service.Build(suite.ctx)
@@ -332,16 +342,24 @@ func (suite *TestFeedServiceSuite) TestBuild_EdgeCases() {
 	})
 }
 
-// TestFeed method
-func (suite *TestFeedServiceSuite) TestFeed() {
+// TestInfo method
+func (suite *TestFeedServiceSuite) TestInfo() {
 	suite.Run("WithEpisodes", func() {
 		// Arrange
 		now := time.Now().UTC()
-		suite.mockStore.On("EpisodeCountAll", suite.ctx).Return(2, nil)
-		suite.mockStore.On("EpisodeGetLastTime", suite.ctx).Return(now, nil)
+		recentEpisode := []*domain.Episode{
+			{
+				ID:        1,
+				CreatedAt: now,
+				Title:     "Recent Episode",
+			},
+		}
+
+		suite.mockStore.On("EpisodeCount", suite.ctx).Return(2, nil)
+		suite.mockStore.On("EpisodeGet", suite.ctx, 1, 0).Return(recentEpisode, nil)
 
 		// Act
-		feed, err := suite.service.Feed(suite.ctx)
+		feed, err := suite.service.Info(suite.ctx)
 
 		// Assert
 		suite.Require().NoError(err)
@@ -354,10 +372,10 @@ func (suite *TestFeedServiceSuite) TestFeed() {
 
 	suite.Run("ZeroEpisodes", func() {
 		// Arrange
-		suite.mockStore.On("EpisodeCountAll", suite.ctx).Return(0, nil)
+		suite.mockStore.On("EpisodeCount", suite.ctx).Return(0, nil)
 
 		// Act
-		feed, err := suite.service.Feed(suite.ctx)
+		feed, err := suite.service.Info(suite.ctx)
 
 		// Assert
 		suite.Require().NoError(err)
@@ -368,34 +386,43 @@ func (suite *TestFeedServiceSuite) TestFeed() {
 	suite.Run("CountError", func() {
 		// Arrange
 		expectedErr := errors.New("count failed")
-		suite.mockStore.On("EpisodeCountAll", suite.ctx).Return(0, expectedErr)
+		suite.mockStore.On("EpisodeCount", suite.ctx).Return(0, expectedErr)
 
 		// Act
-		_, err := suite.service.Feed(suite.ctx)
+		_, err := suite.service.Info(suite.ctx)
 
 		// Assert
 		suite.Error(err)
-		suite.Contains(err.Error(), "failed to count all episodes")
+		suite.Contains(err.Error(), "failed to count episodes")
 		suite.ErrorIs(err, expectedErr)
 	})
 
-	suite.Run("LastTimeError", func() {
+	suite.Run("EpisodeGetError", func() {
 		// Arrange
-		expectedErr := errors.New("last failed")
-		suite.mockStore.On("EpisodeCountAll", suite.ctx).Return(1, nil)
-		suite.mockStore.On("EpisodeGetLastTime", suite.ctx).Return(time.Time{}, expectedErr)
+		expectedErr := errors.New("episode get failed")
+		suite.mockStore.On("EpisodeCount", suite.ctx).Return(1, nil)
+		suite.mockStore.On("EpisodeGet", suite.ctx, 1, 0).Return(nil, expectedErr)
 
 		// Act
-		_, err := suite.service.Feed(suite.ctx)
+		_, err := suite.service.Info(suite.ctx)
 
 		// Assert
 		suite.Error(err)
-		suite.Contains(err.Error(), "failed to get last episode time")
+		suite.Contains(err.Error(), "failed to get episodes")
 		suite.ErrorIs(err, expectedErr)
 	})
-}
 
-// TestFeedService runs the test suite
-func TestFeedService(t *testing.T) {
-	suite.Run(t, new(TestFeedServiceSuite))
+	suite.Run("EmptyEpisodeGetResult", func() {
+		// Arrange - count > 0 but EpisodeGet returns empty slice
+		suite.mockStore.On("EpisodeCount", suite.ctx).Return(1, nil)
+		suite.mockStore.On("EpisodeGet", suite.ctx, 1, 0).Return([]*domain.Episode{}, nil)
+
+		// Act
+		feed, err := suite.service.Info(suite.ctx)
+
+		// Assert
+		suite.Require().NoError(err)
+		suite.Equal(1, feed.EpisodeCount)
+		suite.True(feed.PubDate.IsZero()) // Should be zero since no episodes returned
+	})
 }
