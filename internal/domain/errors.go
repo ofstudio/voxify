@@ -13,7 +13,9 @@ var (
 	ErrDownloadExists      = NewError(104, "episode already exists")
 	ErrDownloadInterrupted = NewError(105, "episode download interrupted")
 	ErrDownloadBusy        = NewError(106, "downloader is busy")
-	ErrDownloadRequest     = NewError(107, "invalid download request")
+	ErrDownloadUrl         = NewError(107, "invalid download URL")
+	ErrDownloadFormat      = NewError(108, "unsupported download format")
+	ErrDownloadQuality     = NewError(109, "unsupported download quality")
 
 	// Store errors
 
