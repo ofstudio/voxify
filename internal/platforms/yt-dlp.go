@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/ofstudio/voxify/internal/config"
-	"github.com/ofstudio/voxify/internal/entities"
+	"github.com/ofstudio/voxify/internal/domain"
 	"github.com/ofstudio/voxify/pkg/files"
 )
 
@@ -35,11 +35,11 @@ func (p YtDlp) ID() string {
 	return "yt-dlp"
 }
 
-func (p YtDlp) Match(url string) bool {
-	return strings.HasPrefix(url, "https://www.youtube.com/") ||
-		strings.HasPrefix(url, "https://youtu.be/") ||
-		strings.HasPrefix(url, "https://youtube.com/") ||
-		strings.HasPrefix(url, "https://m.youtube.com/")
+func (p YtDlp) Match(req domain.DownloadRequest) bool {
+	return strings.HasPrefix(req.Url, "https://www.youtube.com/") ||
+		strings.HasPrefix(req.Url, "https://youtu.be/") ||
+		strings.HasPrefix(req.Url, "https://youtube.com/") ||
+		strings.HasPrefix(req.Url, "https://m.youtube.com/")
 }
 
 const initCheckTimeout = time.Second * 10
@@ -70,7 +70,7 @@ const ytDlpPattern = "yt-dlp-*"
 
 var errTempDir = errors.New("failed to create temporary directory")
 
-func (p YtDlp) Download(ctx context.Context, req entities.Request) (*entities.Episode, error) {
+func (p YtDlp) Download(ctx context.Context, req domain.DownloadRequest) (*domain.Episode, error) {
 	// Validate requested download format
 	mediaType, supported := mediaTypes[req.DownloadFormat]
 	if !supported {
@@ -106,7 +106,7 @@ func (p YtDlp) Download(ctx context.Context, req entities.Request) (*entities.Ep
 	}
 	p.log.Info("[yt-dlp] metadata downloaded", "request", req.LogValue())
 
-	episode := &entities.Episode{
+	episode := &domain.Episode{
 		Title:         meta.Title,
 		Description:   meta.Description,
 		MediaType:     mediaType,
@@ -157,7 +157,7 @@ func (p YtDlp) Download(ctx context.Context, req entities.Request) (*entities.Ep
 	return episode, nil
 }
 
-func (p YtDlp) fetchMeta(ctx context.Context, req entities.Request, dir string) (*youtubeMeta, error) {
+func (p YtDlp) fetchMeta(ctx context.Context, req domain.DownloadRequest, dir string) (*youtubeMeta, error) {
 	cmd := exec.CommandContext(ctx, p.cfg.YtDlpPath,
 		"--no-playlist", // Do not download playlists
 		"-j",            // Dump JSON metadata
@@ -190,7 +190,7 @@ func (p YtDlp) fetchMeta(ctx context.Context, req entities.Request, dir string) 
 	return meta, nil
 }
 
-func (p YtDlp) fetchThumbnail(ctx context.Context, req entities.Request, thumbUrl, dir string) (string, error) {
+func (p YtDlp) fetchThumbnail(ctx context.Context, req domain.DownloadRequest, thumbUrl, dir string) (string, error) {
 	fileName := req.ID + ".jpg"
 	cmd := exec.CommandContext(ctx, p.cfg.FFMpegPath,
 		"-y",           // Overwrite output files without asking
@@ -211,7 +211,7 @@ func (p YtDlp) fetchThumbnail(ctx context.Context, req entities.Request, thumbUr
 	return fileName, nil
 }
 
-func (p YtDlp) fetchMedia(ctx context.Context, req entities.Request, dir string) (string, int64, error) {
+func (p YtDlp) fetchMedia(ctx context.Context, req domain.DownloadRequest, dir string) (string, int64, error) {
 	fileName := req.ID + "." + string(req.DownloadFormat)
 	cmd := exec.CommandContext(ctx, p.cfg.YtDlpPath,
 		"--no-playlist",                              // Do not download playlists
@@ -251,7 +251,7 @@ type youtubeMeta struct {
 	WebpageURL  string `json:"webpage_url"`
 }
 
-var mediaTypes = map[entities.DownloadFormat]entities.MediaType{
-	entities.DownloadMp3: entities.MediaMp3,
-	entities.DownloadM4a: entities.MediaM4a,
+var mediaTypes = map[domain.DownloadFormat]domain.MediaType{
+	domain.DownloadMp3: domain.MediaMp3,
+	domain.DownloadM4a: domain.MediaM4a,
 }
