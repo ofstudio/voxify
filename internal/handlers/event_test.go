@@ -3,7 +3,9 @@ package handlers
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -129,6 +131,229 @@ func (suite *TestEventHandlersSuite) TestNewEventHandlers() {
 	suite.Equal(suite.builder, handlers.builder)
 	suite.Equal(suite.downloader, handlers.downloader)
 	suite.NotNil(handlers.queue)
+}
+
+// Test Start method
+
+func (suite *TestEventHandlersSuite) TestStart() {
+	suite.Run("SubscribesAllHandlers", func() {
+		// Arrange
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		// Expect all event subscriptions with correct EventType constants (cast to domain.EventType)
+		suite.bus.EXPECT().Subscribe(domain.DownloadRequestEvent, mock.AnythingOfType("domain.EventHandler")).Return()
+		suite.bus.EXPECT().Subscribe(domain.BuildRequestEvent, mock.AnythingOfType("domain.EventHandler")).Return()
+		suite.bus.EXPECT().Subscribe(domain.DownloadRequestEvent, mock.AnythingOfType("domain.EventHandler")).Return()
+		suite.bus.EXPECT().Subscribe(domain.DownloadResponseEvent, mock.AnythingOfType("domain.EventHandler")).Return()
+		suite.bus.EXPECT().Subscribe(domain.BuildRequestEvent, mock.AnythingOfType("domain.EventHandler")).Return()
+		suite.bus.EXPECT().Subscribe(domain.BuildResponseEvent, mock.AnythingOfType("domain.EventHandler")).Return()
+
+		// Act
+		suite.handlers.Start(ctx)
+
+		// Give some time for workers to start
+		time.Sleep(10 * time.Millisecond)
+
+		// Assert
+		suite.bus.AssertExpectations(suite.T())
+
+		// Verify workers are running by checking if they can process requests
+		req := suite.createDownloadRequest()
+		episode := suite.createEpisode()
+
+		suite.downloader.EXPECT().Download(ctx, req).Return(episode, nil)
+		suite.bus.EXPECT().Publish(suite.matchDownloadResponseEvent(domain.StatusSuccess, episode, nil)).Return()
+
+		// Send request to queue to verify workers are active
+		suite.handlers.queue <- req
+
+		// Give time for processing
+		time.Sleep(50 * time.Millisecond)
+
+		// Verify URL is not in active map after processing (worker completed)
+		_, exists := suite.handlers.active.Load(req.Url)
+		suite.False(exists)
+	})
+
+	suite.Run("StartsCorrectNumberOfWorkers", func() {
+		// Arrange
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		// Set specific number of workers
+		suite.cfg.DownloadWorkers = 3
+		handlers := NewEventHandlers(
+			suite.cfg,
+			suite.log,
+			suite.bus,
+			suite.builder,
+			suite.downloader,
+		)
+
+		// Mock all subscriptions
+		suite.bus.EXPECT().Subscribe(mock.Anything, mock.Anything).Return().Times(6)
+
+		// Act
+		handlers.Start(ctx)
+
+		// Give time for workers to start
+		time.Sleep(10 * time.Millisecond)
+
+		// Assert - verify we can process multiple requests concurrently
+		// This indirectly verifies that multiple workers are running
+		var wg sync.WaitGroup
+		for i := 0; i < 3; i++ {
+			wg.Add(1)
+			go func(id int) {
+				defer wg.Done()
+				req := domain.DownloadRequest{
+					ID: fmt.Sprintf("test-req-%d", id),
+					Source: domain.RequestSource{
+						UserID:    int64(12345 + id),
+						ChatID:    67890,
+						MessageID: 111 + id,
+					},
+					Url:             fmt.Sprintf("https://example.com/video%d", id),
+					DownloadFormat:  domain.DownloadMp3,
+					DownloadQuality: "192",
+				}
+				episode := &domain.Episode{
+					ID:          int64(id + 1),
+					Title:       fmt.Sprintf("Test Episode %d", id),
+					OriginalURL: req.Url,
+				}
+
+				suite.downloader.EXPECT().Download(ctx, req).Return(episode, nil)
+				suite.bus.EXPECT().Publish(suite.matchDownloadResponseEvent(domain.StatusSuccess, episode, nil)).Return()
+
+				handlers.queue <- req
+			}(i)
+		}
+
+		// Wait for all requests to be processed
+		wg.Wait()
+		time.Sleep(50 * time.Millisecond)
+
+		// Verify all URLs are processed (not in active map)
+		for i := 0; i < 3; i++ {
+			url := fmt.Sprintf("https://example.com/video%d", i)
+			_, exists := handlers.active.Load(url)
+			suite.False(exists, "URL %s should not be in active map", url)
+		}
+	})
+}
+
+// Test downloadHandler method
+
+func (suite *TestEventHandlersSuite) TestDownloadHandler() {
+	// helper to swap queue with buffered size 1 per subtest
+	replaceQueue := func() {
+		ch := make(chan domain.DownloadRequest, 1)
+		suite.handlers.queue = ch
+	}
+
+	suite.Run("FailsRequestNotPassingValidation", func() {
+		// Arrange
+		replaceQueue()
+		req := suite.createDownloadRequest()
+		event := domain.NewDownloadRequestEvent(req)
+		validationErr := errors.New("validation failed")
+
+		// Underlying Validate returns base error which handler wraps
+		suite.downloader.EXPECT().Validate(suite.ctx, req).Return(validationErr)
+
+		// Expect publication with StatusFailed and error containing substring
+		suite.bus.EXPECT().Publish(mock.MatchedBy(func(ev domain.Event) bool {
+			if ev.Type() != domain.DownloadResponseEvent {
+				return false
+			}
+			resp, ok := ev.Payload().(domain.DownloadResponse)
+			if !ok {
+				return false
+			}
+			if resp.Status != domain.StatusFailed {
+				return false
+			}
+			if resp.Error == nil {
+				return false
+			}
+			return strings.Contains(resp.Error.Error(), "validation failed")
+		})).Return()
+
+		// Act
+		handler := suite.handlers.downloadHandler(suite.ctx)
+		handler(event)
+	})
+
+	suite.Run("FailsWithErrDownloadBusyWhenNoFreeWorkers", func() {
+		// Arrange
+		replaceQueue()
+		req := suite.createDownloadRequest()
+		event := domain.NewDownloadRequestEvent(req)
+
+		// Fill queue (capacity 1)
+		suite.handlers.queue <- domain.DownloadRequest{ID: "dummy", Url: "https://dummy"}
+		// Mock successful validation so busy branch triggers
+		suite.downloader.EXPECT().Validate(suite.ctx, req).Return(nil)
+		suite.bus.EXPECT().Publish(suite.matchDownloadResponseEvent(domain.StatusFailed, nil, domain.ErrDownloadBusy)).Return()
+
+		// Act
+		handler := suite.handlers.downloadHandler(suite.ctx)
+		handler(event)
+	})
+
+	suite.Run("EnqueuesRequestWhenWorkersAvailable", func() {
+		// Arrange
+		replaceQueue()
+		req := suite.createDownloadRequest()
+		event := domain.NewDownloadRequestEvent(req)
+		suite.downloader.EXPECT().Validate(suite.ctx, req).Return(nil)
+		suite.bus.EXPECT().Publish(mock.MatchedBy(func(ev domain.Event) bool {
+			if ev.Type() != domain.DownloadResponseEvent {
+				return false
+			}
+			resp, ok := ev.Payload().(domain.DownloadResponse)
+			if !ok {
+				return false
+			}
+			return resp.Status == domain.StatusPending && resp.Request.ID == req.ID
+		})).Return()
+
+		// Act
+		handler := suite.handlers.downloadHandler(suite.ctx)
+		handler(event)
+
+		// Assert request present in queue
+		select {
+		case receivedReq := <-suite.handlers.queue:
+			suite.Equal(req.ID, receivedReq.ID)
+		case <-time.After(100 * time.Millisecond):
+			suite.Fail("Request not enqueued")
+		}
+	})
+
+	suite.Run("CreatesEventWhenRequestEnqueued", func() {
+		// Arrange
+		replaceQueue()
+		req := suite.createDownloadRequest()
+		event := domain.NewDownloadRequestEvent(req)
+		suite.downloader.EXPECT().Validate(suite.ctx, req).Return(nil)
+		suite.bus.EXPECT().Publish(mock.MatchedBy(func(ev domain.Event) bool {
+			if ev.Type() != domain.DownloadResponseEvent {
+				return false
+			}
+			resp, ok := ev.Payload().(domain.DownloadResponse)
+			if !ok {
+				return false
+			}
+			return resp.Status == domain.StatusPending && resp.Request.ID == req.ID && resp.Error == nil && resp.Episode == nil
+		})).Return()
+
+		// Act
+		handler := suite.handlers.downloadHandler(suite.ctx)
+		handler(event)
+	})
 }
 
 // Test downloadValidate method
