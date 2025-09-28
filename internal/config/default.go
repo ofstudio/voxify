@@ -3,7 +3,7 @@ package config
 import (
 	"time"
 
-	"github.com/ofstudio/voxify/internal/entities"
+	"github.com/ofstudio/voxify/internal/domain"
 )
 
 // Default returns default configuration
@@ -17,7 +17,7 @@ func Default() Config {
 			YtDlpPath:       "yt-dlp",
 			FFMpegPath:      "ffmpeg",
 			ThumbnailSize:   3000,
-			DownloadFormat:  entities.DownloadMp3,
+			DownloadFormat:  domain.DownloadMp3,
 			DownloadQuality: "192k",
 			DownloadWorkers: 2,
 			FeedFileName:    "rss.xml",
@@ -27,11 +27,6 @@ func Default() Config {
 			FeedImage:       "https://raw.githubusercontent.com/ofstudio/voxify/refs/heads/master/assets/voxify-cover-dark.png",
 			FeedLanguage:    "en",
 			FeedCategories:  []string{"Technology"},
-
-			SupportedDownloadFormats: []entities.DownloadFormat{
-				entities.DownloadMp3,
-				entities.DownloadM4a,
-			},
 		},
 	}
 }
