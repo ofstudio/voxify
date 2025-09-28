@@ -9,19 +9,19 @@ import (
 	"regexp"
 
 	"github.com/ofstudio/voxify/internal/config"
-	"github.com/ofstudio/voxify/internal/entities"
+	"github.com/ofstudio/voxify/internal/domain"
 	"github.com/ofstudio/voxify/pkg/files"
 )
 
 type EpisodeService struct {
-	cfg       *config.Settings
+	cfg       config.Settings
 	log       *slog.Logger
-	store     Store
-	platforms []Platform
+	store     domain.Store
+	platforms []domain.Platform
 }
 
 // NewEpisodeService creates a new EpisodeService instance.
-func NewEpisodeService(cfg *config.Settings, log *slog.Logger, s Store, p ...Platform) *EpisodeService {
+func NewEpisodeService(cfg config.Settings, log *slog.Logger, s domain.Store, p ...domain.Platform) *EpisodeService {
 	return &EpisodeService{
 		cfg:       cfg,
 		log:       log,
@@ -58,21 +58,28 @@ func (s *EpisodeService) Init(ctx context.Context) error {
 	return nil
 }
 
-// Download downloads an episode from the given URL using the appropriate platform.
-func (s *EpisodeService) Download(ctx context.Context, req entities.Request) (*entities.Episode, error) {
-	if req.DownloadFormat == "" {
-		req.DownloadFormat = s.cfg.DownloadFormat
-	}
-	if req.DownloadQuality == "" {
-		req.DownloadQuality = s.cfg.DownloadQuality
-	}
+func (s *EpisodeService) Validate(ctx context.Context, req domain.DownloadRequest) error {
+	// validate request
 	if err := s.validateRequest(&req); err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrInvalidRequest, err)
+		return fmt.Errorf("%w: %v", domain.ErrDownloadRequest, err)
+	}
+	// find platform
+	if s.findPlatform(req) == nil {
+		return domain.ErrDownloadPlatform
 	}
 
-	platform := s.findPlatform(req.Url)
+	return nil
+}
+
+// Download downloads an Episode from the given URL using the appropriate platform.
+func (s *EpisodeService) Download(ctx context.Context, req domain.DownloadRequest) (*domain.Episode, error) {
+	if err := s.validateRequest(&req); err != nil {
+		return nil, fmt.Errorf("%w: %v", domain.ErrDownloadRequest, err)
+	}
+
+	platform := s.findPlatform(req)
 	if platform == nil {
-		return nil, ErrNoMatchingPlatform
+		return nil, domain.ErrDownloadPlatform
 	}
 
 	s.log.Info("[episode service] downloading episode",
@@ -82,12 +89,12 @@ func (s *EpisodeService) Download(ctx context.Context, req entities.Request) (*e
 
 	episode, err := platform.Download(ctxTimeout, req)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", ErrDownloadFailed, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrDownloadFailed, err)
 	}
 
-	// Save episode to store
+	// Save Episode to store
 	if err = s.store.EpisodeCreate(ctx, episode); err != nil {
-		return nil, fmt.Errorf("%w: %w", ErrEpisodeCreate, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrEpisodeCreate, err)
 	}
 
 	s.log.Info("[episode service] episode downloaded",
@@ -95,9 +102,9 @@ func (s *EpisodeService) Download(ctx context.Context, req entities.Request) (*e
 	return episode, nil
 }
 
-func (s *EpisodeService) findPlatform(url string) Platform {
+func (s *EpisodeService) findPlatform(req domain.DownloadRequest) domain.Platform {
 	for _, p := range s.platforms {
-		if p.Match(url) {
+		if p.Match(req) {
 			return p
 		}
 	}
@@ -105,7 +112,7 @@ func (s *EpisodeService) findPlatform(url string) Platform {
 }
 
 // validateRequest validates the download request.
-func (s *EpisodeService) validateRequest(req *entities.Request) error {
+func (s *EpisodeService) validateRequest(req *domain.DownloadRequest) error {
 	if err := s.validateUrl(req.Url); err != nil {
 		return fmt.Errorf("url validation failed: %w", err)
 	}
@@ -130,16 +137,17 @@ func (s *EpisodeService) validateUrl(href string) error {
 	return nil
 }
 
-func (s *EpisodeService) validateDownloadFormat(format entities.DownloadFormat) error {
-	if format == "" {
-		return errors.New("download format is empty")
+func (s *EpisodeService) validateDownloadFormat(format domain.DownloadFormat) error {
+	switch format {
+	case domain.DownloadMp3:
+		return nil
+	case domain.DownloadM4a:
+		return nil
+	case "":
+		return errors.New("download format not specified")
+	default:
+		return fmt.Errorf("unsupported download format: %s", format)
 	}
-	for _, supported := range s.cfg.SupportedDownloadFormats {
-		if format == supported {
-			return nil
-		}
-	}
-	return fmt.Errorf("unsupported download format: %s", format)
 }
 
 var reSafeQuality = regexp.MustCompile(`^[0-9a-zA-Z-_]{1,32}$`)
