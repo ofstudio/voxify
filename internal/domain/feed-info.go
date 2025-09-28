@@ -1,4 +1,4 @@
-package entities
+package domain
 
 import (
 	"time"
@@ -6,8 +6,8 @@ import (
 	"github.com/ofstudio/voxify/pkg/feedcast"
 )
 
-// Feed contains information about podcast feed
-type Feed struct {
+// FeedInfo contains information about podcast feed
+type FeedInfo struct {
 	Title         string         // Show title
 	Description   string         // Show description
 	Summary       string         // Show summary
@@ -24,7 +24,7 @@ type Feed struct {
 	WebsiteLink   string         // Website link
 	RSSLink       string         // RSS feed link
 	ImageUrl      string         // Cover image link
-	Generator     string         // Feed generator software
+	Generator     string         // RSS generator software
 	PubDate       time.Time      // Last published date. Zero time if no episodes
 	EpisodeCount  int            // Number of episodes in the feed
 }
