@@ -44,7 +44,7 @@ func NewBuildResponseEvent(p BuildResponse) Event { return Event{t: BuildRespons
 type EventType int
 
 const (
-	DownloadRequestEvent = iota + 1 // Start from 1 to avoid zero value
+	DownloadRequestEvent EventType = iota + 1 // Start from 1 to avoid zero value
 	DownloadResponseEvent
 	BuildRequestEvent
 	BuildResponseEvent
