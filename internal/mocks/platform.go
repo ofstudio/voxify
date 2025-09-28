@@ -7,7 +7,7 @@ package mocks
 import (
 	"context"
 
-	"github.com/ofstudio/voxify/internal/entities"
+	"github.com/ofstudio/voxify/internal/domain"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -39,27 +39,27 @@ func (_m *MockPlatform) EXPECT() *MockPlatform_Expecter {
 }
 
 // Download provides a mock function for the type MockPlatform
-func (_mock *MockPlatform) Download(ctx context.Context, req entities.Request) (*entities.Episode, error) {
-	ret := _mock.Called(ctx, req)
+func (_mock *MockPlatform) Download(ctx context.Context, request domain.DownloadRequest) (*domain.Episode, error) {
+	ret := _mock.Called(ctx, request)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Download")
 	}
 
-	var r0 *entities.Episode
+	var r0 *domain.Episode
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, entities.Request) (*entities.Episode, error)); ok {
-		return returnFunc(ctx, req)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, domain.DownloadRequest) (*domain.Episode, error)); ok {
+		return returnFunc(ctx, request)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, entities.Request) *entities.Episode); ok {
-		r0 = returnFunc(ctx, req)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, domain.DownloadRequest) *domain.Episode); ok {
+		r0 = returnFunc(ctx, request)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*entities.Episode)
+			r0 = ret.Get(0).(*domain.Episode)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, entities.Request) error); ok {
-		r1 = returnFunc(ctx, req)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, domain.DownloadRequest) error); ok {
+		r1 = returnFunc(ctx, request)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -73,20 +73,20 @@ type MockPlatform_Download_Call struct {
 
 // Download is a helper method to define mock.On call
 //   - ctx context.Context
-//   - req entities.Request
-func (_e *MockPlatform_Expecter) Download(ctx interface{}, req interface{}) *MockPlatform_Download_Call {
-	return &MockPlatform_Download_Call{Call: _e.mock.On("Download", ctx, req)}
+//   - request domain.DownloadRequest
+func (_e *MockPlatform_Expecter) Download(ctx interface{}, request interface{}) *MockPlatform_Download_Call {
+	return &MockPlatform_Download_Call{Call: _e.mock.On("Download", ctx, request)}
 }
 
-func (_c *MockPlatform_Download_Call) Run(run func(ctx context.Context, req entities.Request)) *MockPlatform_Download_Call {
+func (_c *MockPlatform_Download_Call) Run(run func(ctx context.Context, request domain.DownloadRequest)) *MockPlatform_Download_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 entities.Request
+		var arg1 domain.DownloadRequest
 		if args[1] != nil {
-			arg1 = args[1].(entities.Request)
+			arg1 = args[1].(domain.DownloadRequest)
 		}
 		run(
 			arg0,
@@ -96,12 +96,12 @@ func (_c *MockPlatform_Download_Call) Run(run func(ctx context.Context, req enti
 	return _c
 }
 
-func (_c *MockPlatform_Download_Call) Return(episode *entities.Episode, err error) *MockPlatform_Download_Call {
+func (_c *MockPlatform_Download_Call) Return(episode *domain.Episode, err error) *MockPlatform_Download_Call {
 	_c.Call.Return(episode, err)
 	return _c
 }
 
-func (_c *MockPlatform_Download_Call) RunAndReturn(run func(ctx context.Context, req entities.Request) (*entities.Episode, error)) *MockPlatform_Download_Call {
+func (_c *MockPlatform_Download_Call) RunAndReturn(run func(ctx context.Context, request domain.DownloadRequest) (*domain.Episode, error)) *MockPlatform_Download_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -202,16 +202,16 @@ func (_c *MockPlatform_Init_Call) RunAndReturn(run func(ctx context.Context) err
 }
 
 // Match provides a mock function for the type MockPlatform
-func (_mock *MockPlatform) Match(url string) bool {
-	ret := _mock.Called(url)
+func (_mock *MockPlatform) Match(request domain.DownloadRequest) bool {
+	ret := _mock.Called(request)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Match")
 	}
 
 	var r0 bool
-	if returnFunc, ok := ret.Get(0).(func(string) bool); ok {
-		r0 = returnFunc(url)
+	if returnFunc, ok := ret.Get(0).(func(domain.DownloadRequest) bool); ok {
+		r0 = returnFunc(request)
 	} else {
 		r0 = ret.Get(0).(bool)
 	}
@@ -224,16 +224,16 @@ type MockPlatform_Match_Call struct {
 }
 
 // Match is a helper method to define mock.On call
-//   - url string
-func (_e *MockPlatform_Expecter) Match(url interface{}) *MockPlatform_Match_Call {
-	return &MockPlatform_Match_Call{Call: _e.mock.On("Match", url)}
+//   - request domain.DownloadRequest
+func (_e *MockPlatform_Expecter) Match(request interface{}) *MockPlatform_Match_Call {
+	return &MockPlatform_Match_Call{Call: _e.mock.On("Match", request)}
 }
 
-func (_c *MockPlatform_Match_Call) Run(run func(url string)) *MockPlatform_Match_Call {
+func (_c *MockPlatform_Match_Call) Run(run func(request domain.DownloadRequest)) *MockPlatform_Match_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 string
+		var arg0 domain.DownloadRequest
 		if args[0] != nil {
-			arg0 = args[0].(string)
+			arg0 = args[0].(domain.DownloadRequest)
 		}
 		run(
 			arg0,
@@ -247,7 +247,7 @@ func (_c *MockPlatform_Match_Call) Return(b bool) *MockPlatform_Match_Call {
 	return _c
 }
 
-func (_c *MockPlatform_Match_Call) RunAndReturn(run func(url string) bool) *MockPlatform_Match_Call {
+func (_c *MockPlatform_Match_Call) RunAndReturn(run func(request domain.DownloadRequest) bool) *MockPlatform_Match_Call {
 	_c.Call.Return(run)
 	return _c
 }

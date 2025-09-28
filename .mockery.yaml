@@ -5,15 +5,12 @@ structname: 'Mock{{.InterfaceName}}'
 pkgname: 'mocks'
 recursive: false
 packages:
-  github.com/ofstudio/voxify/internal/store:
+  github.com/ofstudio/voxify/internal/domain:
     config:
       dir: './internal/mocks'
     interfaces:
-      Store:
-  github.com/ofstudio/voxify/internal/services:
-    config:
-      dir: './internal/mocks'
-    interfaces:
+      FeedBuilder:
+      EpisodeDownloader:
       Platform:
-      Downloader:
-      Feeder:
+      EventBus:
+      Store:

@@ -6,10 +6,8 @@ package mocks
 
 import (
 	"context"
-	"time"
 
-	"github.com/ofstudio/voxify/internal/entities"
-	"github.com/ofstudio/voxify/internal/store"
+	"github.com/ofstudio/voxify/internal/domain"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -41,23 +39,23 @@ func (_m *MockStore) EXPECT() *MockStore_Expecter {
 }
 
 // Begin provides a mock function for the type MockStore
-func (_mock *MockStore) Begin(ctx context.Context) (store.Store, error) {
+func (_mock *MockStore) Begin(ctx context.Context) (domain.Store, error) {
 	ret := _mock.Called(ctx)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Begin")
 	}
 
-	var r0 store.Store
+	var r0 domain.Store
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context) (store.Store, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context) (domain.Store, error)); ok {
 		return returnFunc(ctx)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context) store.Store); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context) domain.Store); ok {
 		r0 = returnFunc(ctx)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(store.Store)
+			r0 = ret.Get(0).(domain.Store)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context) error); ok {
@@ -92,12 +90,12 @@ func (_c *MockStore_Begin_Call) Run(run func(ctx context.Context)) *MockStore_Be
 	return _c
 }
 
-func (_c *MockStore_Begin_Call) Return(store1 store.Store, err error) *MockStore_Begin_Call {
-	_c.Call.Return(store1, err)
+func (_c *MockStore_Begin_Call) Return(store domain.Store, err error) *MockStore_Begin_Call {
+	_c.Call.Return(store, err)
 	return _c
 }
 
-func (_c *MockStore_Begin_Call) RunAndReturn(run func(ctx context.Context) (store.Store, error)) *MockStore_Begin_Call {
+func (_c *MockStore_Begin_Call) RunAndReturn(run func(ctx context.Context) (domain.Store, error)) *MockStore_Begin_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -179,12 +177,12 @@ func (_c *MockStore_Commit_Call) RunAndReturn(run func() error) *MockStore_Commi
 	return _c
 }
 
-// EpisodeCountAll provides a mock function for the type MockStore
-func (_mock *MockStore) EpisodeCountAll(ctx context.Context) (int, error) {
+// EpisodeCount provides a mock function for the type MockStore
+func (_mock *MockStore) EpisodeCount(ctx context.Context) (int, error) {
 	ret := _mock.Called(ctx)
 
 	if len(ret) == 0 {
-		panic("no return value specified for EpisodeCountAll")
+		panic("no return value specified for EpisodeCount")
 	}
 
 	var r0 int
@@ -205,18 +203,18 @@ func (_mock *MockStore) EpisodeCountAll(ctx context.Context) (int, error) {
 	return r0, r1
 }
 
-// MockStore_EpisodeCountAll_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'EpisodeCountAll'
-type MockStore_EpisodeCountAll_Call struct {
+// MockStore_EpisodeCount_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'EpisodeCount'
+type MockStore_EpisodeCount_Call struct {
 	*mock.Call
 }
 
-// EpisodeCountAll is a helper method to define mock.On call
+// EpisodeCount is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockStore_Expecter) EpisodeCountAll(ctx interface{}) *MockStore_EpisodeCountAll_Call {
-	return &MockStore_EpisodeCountAll_Call{Call: _e.mock.On("EpisodeCountAll", ctx)}
+func (_e *MockStore_Expecter) EpisodeCount(ctx interface{}) *MockStore_EpisodeCount_Call {
+	return &MockStore_EpisodeCount_Call{Call: _e.mock.On("EpisodeCount", ctx)}
 }
 
-func (_c *MockStore_EpisodeCountAll_Call) Run(run func(ctx context.Context)) *MockStore_EpisodeCountAll_Call {
+func (_c *MockStore_EpisodeCount_Call) Run(run func(ctx context.Context)) *MockStore_EpisodeCount_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -229,18 +227,18 @@ func (_c *MockStore_EpisodeCountAll_Call) Run(run func(ctx context.Context)) *Mo
 	return _c
 }
 
-func (_c *MockStore_EpisodeCountAll_Call) Return(n int, err error) *MockStore_EpisodeCountAll_Call {
+func (_c *MockStore_EpisodeCount_Call) Return(n int, err error) *MockStore_EpisodeCount_Call {
 	_c.Call.Return(n, err)
 	return _c
 }
 
-func (_c *MockStore_EpisodeCountAll_Call) RunAndReturn(run func(ctx context.Context) (int, error)) *MockStore_EpisodeCountAll_Call {
+func (_c *MockStore_EpisodeCount_Call) RunAndReturn(run func(ctx context.Context) (int, error)) *MockStore_EpisodeCount_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // EpisodeCreate provides a mock function for the type MockStore
-func (_mock *MockStore) EpisodeCreate(ctx context.Context, episode *entities.Episode) error {
+func (_mock *MockStore) EpisodeCreate(ctx context.Context, episode *domain.Episode) error {
 	ret := _mock.Called(ctx, episode)
 
 	if len(ret) == 0 {
@@ -248,7 +246,7 @@ func (_mock *MockStore) EpisodeCreate(ctx context.Context, episode *entities.Epi
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *entities.Episode) error); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *domain.Episode) error); ok {
 		r0 = returnFunc(ctx, episode)
 	} else {
 		r0 = ret.Error(0)
@@ -263,20 +261,20 @@ type MockStore_EpisodeCreate_Call struct {
 
 // EpisodeCreate is a helper method to define mock.On call
 //   - ctx context.Context
-//   - episode *entities.Episode
+//   - episode *domain.Episode
 func (_e *MockStore_Expecter) EpisodeCreate(ctx interface{}, episode interface{}) *MockStore_EpisodeCreate_Call {
 	return &MockStore_EpisodeCreate_Call{Call: _e.mock.On("EpisodeCreate", ctx, episode)}
 }
 
-func (_c *MockStore_EpisodeCreate_Call) Run(run func(ctx context.Context, episode *entities.Episode)) *MockStore_EpisodeCreate_Call {
+func (_c *MockStore_EpisodeCreate_Call) Run(run func(ctx context.Context, episode *domain.Episode)) *MockStore_EpisodeCreate_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 *entities.Episode
+		var arg1 *domain.Episode
 		if args[1] != nil {
-			arg1 = args[1].(*entities.Episode)
+			arg1 = args[1].(*domain.Episode)
 		}
 		run(
 			arg0,
@@ -291,253 +289,65 @@ func (_c *MockStore_EpisodeCreate_Call) Return(err error) *MockStore_EpisodeCrea
 	return _c
 }
 
-func (_c *MockStore_EpisodeCreate_Call) RunAndReturn(run func(ctx context.Context, episode *entities.Episode) error) *MockStore_EpisodeCreate_Call {
+func (_c *MockStore_EpisodeCreate_Call) RunAndReturn(run func(ctx context.Context, episode *domain.Episode) error) *MockStore_EpisodeCreate_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// EpisodeGetByOriginalUrl provides a mock function for the type MockStore
-func (_mock *MockStore) EpisodeGetByOriginalUrl(ctx context.Context, url string) ([]*entities.Episode, error) {
-	ret := _mock.Called(ctx, url)
+// EpisodeGet provides a mock function for the type MockStore
+func (_mock *MockStore) EpisodeGet(ctx context.Context, pageSize int, pageNumber int) ([]*domain.Episode, error) {
+	ret := _mock.Called(ctx, pageSize, pageNumber)
 
 	if len(ret) == 0 {
-		panic("no return value specified for EpisodeGetByOriginalUrl")
+		panic("no return value specified for EpisodeGet")
 	}
 
-	var r0 []*entities.Episode
+	var r0 []*domain.Episode
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) ([]*entities.Episode, error)); ok {
-		return returnFunc(ctx, url)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int, int) ([]*domain.Episode, error)); ok {
+		return returnFunc(ctx, pageSize, pageNumber)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) []*entities.Episode); ok {
-		r0 = returnFunc(ctx, url)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int, int) []*domain.Episode); ok {
+		r0 = returnFunc(ctx, pageSize, pageNumber)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*entities.Episode)
+			r0 = ret.Get(0).([]*domain.Episode)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = returnFunc(ctx, url)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, int, int) error); ok {
+		r1 = returnFunc(ctx, pageSize, pageNumber)
 	} else {
 		r1 = ret.Error(1)
 	}
 	return r0, r1
 }
 
-// MockStore_EpisodeGetByOriginalUrl_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'EpisodeGetByOriginalUrl'
-type MockStore_EpisodeGetByOriginalUrl_Call struct {
+// MockStore_EpisodeGet_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'EpisodeGet'
+type MockStore_EpisodeGet_Call struct {
 	*mock.Call
 }
 
-// EpisodeGetByOriginalUrl is a helper method to define mock.On call
+// EpisodeGet is a helper method to define mock.On call
 //   - ctx context.Context
-//   - url string
-func (_e *MockStore_Expecter) EpisodeGetByOriginalUrl(ctx interface{}, url interface{}) *MockStore_EpisodeGetByOriginalUrl_Call {
-	return &MockStore_EpisodeGetByOriginalUrl_Call{Call: _e.mock.On("EpisodeGetByOriginalUrl", ctx, url)}
+//   - pageSize int
+//   - pageNumber int
+func (_e *MockStore_Expecter) EpisodeGet(ctx interface{}, pageSize interface{}, pageNumber interface{}) *MockStore_EpisodeGet_Call {
+	return &MockStore_EpisodeGet_Call{Call: _e.mock.On("EpisodeGet", ctx, pageSize, pageNumber)}
 }
 
-func (_c *MockStore_EpisodeGetByOriginalUrl_Call) Run(run func(ctx context.Context, url string)) *MockStore_EpisodeGetByOriginalUrl_Call {
+func (_c *MockStore_EpisodeGet_Call) Run(run func(ctx context.Context, pageSize int, pageNumber int)) *MockStore_EpisodeGet_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 string
+		var arg1 int
 		if args[1] != nil {
-			arg1 = args[1].(string)
+			arg1 = args[1].(int)
 		}
-		run(
-			arg0,
-			arg1,
-		)
-	})
-	return _c
-}
-
-func (_c *MockStore_EpisodeGetByOriginalUrl_Call) Return(episodes []*entities.Episode, err error) *MockStore_EpisodeGetByOriginalUrl_Call {
-	_c.Call.Return(episodes, err)
-	return _c
-}
-
-func (_c *MockStore_EpisodeGetByOriginalUrl_Call) RunAndReturn(run func(ctx context.Context, url string) ([]*entities.Episode, error)) *MockStore_EpisodeGetByOriginalUrl_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// EpisodeGetLastTime provides a mock function for the type MockStore
-func (_mock *MockStore) EpisodeGetLastTime(ctx context.Context) (time.Time, error) {
-	ret := _mock.Called(ctx)
-
-	if len(ret) == 0 {
-		panic("no return value specified for EpisodeGetLastTime")
-	}
-
-	var r0 time.Time
-	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context) (time.Time, error)); ok {
-		return returnFunc(ctx)
-	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context) time.Time); ok {
-		r0 = returnFunc(ctx)
-	} else {
-		r0 = ret.Get(0).(time.Time)
-	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context) error); ok {
-		r1 = returnFunc(ctx)
-	} else {
-		r1 = ret.Error(1)
-	}
-	return r0, r1
-}
-
-// MockStore_EpisodeGetLastTime_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'EpisodeGetLastTime'
-type MockStore_EpisodeGetLastTime_Call struct {
-	*mock.Call
-}
-
-// EpisodeGetLastTime is a helper method to define mock.On call
-//   - ctx context.Context
-func (_e *MockStore_Expecter) EpisodeGetLastTime(ctx interface{}) *MockStore_EpisodeGetLastTime_Call {
-	return &MockStore_EpisodeGetLastTime_Call{Call: _e.mock.On("EpisodeGetLastTime", ctx)}
-}
-
-func (_c *MockStore_EpisodeGetLastTime_Call) Run(run func(ctx context.Context)) *MockStore_EpisodeGetLastTime_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		run(
-			arg0,
-		)
-	})
-	return _c
-}
-
-func (_c *MockStore_EpisodeGetLastTime_Call) Return(time1 time.Time, err error) *MockStore_EpisodeGetLastTime_Call {
-	_c.Call.Return(time1, err)
-	return _c
-}
-
-func (_c *MockStore_EpisodeGetLastTime_Call) RunAndReturn(run func(ctx context.Context) (time.Time, error)) *MockStore_EpisodeGetLastTime_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// EpisodeListAll provides a mock function for the type MockStore
-func (_mock *MockStore) EpisodeListAll(ctx context.Context) ([]*entities.Episode, error) {
-	ret := _mock.Called(ctx)
-
-	if len(ret) == 0 {
-		panic("no return value specified for EpisodeListAll")
-	}
-
-	var r0 []*entities.Episode
-	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context) ([]*entities.Episode, error)); ok {
-		return returnFunc(ctx)
-	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context) []*entities.Episode); ok {
-		r0 = returnFunc(ctx)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*entities.Episode)
-		}
-	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context) error); ok {
-		r1 = returnFunc(ctx)
-	} else {
-		r1 = ret.Error(1)
-	}
-	return r0, r1
-}
-
-// MockStore_EpisodeListAll_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'EpisodeListAll'
-type MockStore_EpisodeListAll_Call struct {
-	*mock.Call
-}
-
-// EpisodeListAll is a helper method to define mock.On call
-//   - ctx context.Context
-func (_e *MockStore_Expecter) EpisodeListAll(ctx interface{}) *MockStore_EpisodeListAll_Call {
-	return &MockStore_EpisodeListAll_Call{Call: _e.mock.On("EpisodeListAll", ctx)}
-}
-
-func (_c *MockStore_EpisodeListAll_Call) Run(run func(ctx context.Context)) *MockStore_EpisodeListAll_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		run(
-			arg0,
-		)
-	})
-	return _c
-}
-
-func (_c *MockStore_EpisodeListAll_Call) Return(episodes []*entities.Episode, err error) *MockStore_EpisodeListAll_Call {
-	_c.Call.Return(episodes, err)
-	return _c
-}
-
-func (_c *MockStore_EpisodeListAll_Call) RunAndReturn(run func(ctx context.Context) ([]*entities.Episode, error)) *MockStore_EpisodeListAll_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// ProcessCountByUrlAndStatus provides a mock function for the type MockStore
-func (_mock *MockStore) ProcessCountByUrlAndStatus(ctx context.Context, url string, status entities.Status) (int, error) {
-	ret := _mock.Called(ctx, url, status)
-
-	if len(ret) == 0 {
-		panic("no return value specified for ProcessCountByUrlAndStatus")
-	}
-
-	var r0 int
-	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, entities.Status) (int, error)); ok {
-		return returnFunc(ctx, url, status)
-	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, entities.Status) int); ok {
-		r0 = returnFunc(ctx, url, status)
-	} else {
-		r0 = ret.Get(0).(int)
-	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, entities.Status) error); ok {
-		r1 = returnFunc(ctx, url, status)
-	} else {
-		r1 = ret.Error(1)
-	}
-	return r0, r1
-}
-
-// MockStore_ProcessCountByUrlAndStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ProcessCountByUrlAndStatus'
-type MockStore_ProcessCountByUrlAndStatus_Call struct {
-	*mock.Call
-}
-
-// ProcessCountByUrlAndStatus is a helper method to define mock.On call
-//   - ctx context.Context
-//   - url string
-//   - status entities.Status
-func (_e *MockStore_Expecter) ProcessCountByUrlAndStatus(ctx interface{}, url interface{}, status interface{}) *MockStore_ProcessCountByUrlAndStatus_Call {
-	return &MockStore_ProcessCountByUrlAndStatus_Call{Call: _e.mock.On("ProcessCountByUrlAndStatus", ctx, url, status)}
-}
-
-func (_c *MockStore_ProcessCountByUrlAndStatus_Call) Run(run func(ctx context.Context, url string, status entities.Status)) *MockStore_ProcessCountByUrlAndStatus_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 string
-		if args[1] != nil {
-			arg1 = args[1].(string)
-		}
-		var arg2 entities.Status
+		var arg2 int
 		if args[2] != nil {
-			arg2 = args[2].(entities.Status)
+			arg2 = args[2].(int)
 		}
 		run(
 			arg0,
@@ -548,65 +358,65 @@ func (_c *MockStore_ProcessCountByUrlAndStatus_Call) Run(run func(ctx context.Co
 	return _c
 }
 
-func (_c *MockStore_ProcessCountByUrlAndStatus_Call) Return(n int, err error) *MockStore_ProcessCountByUrlAndStatus_Call {
-	_c.Call.Return(n, err)
+func (_c *MockStore_EpisodeGet_Call) Return(episodes []*domain.Episode, err error) *MockStore_EpisodeGet_Call {
+	_c.Call.Return(episodes, err)
 	return _c
 }
 
-func (_c *MockStore_ProcessCountByUrlAndStatus_Call) RunAndReturn(run func(ctx context.Context, url string, status entities.Status) (int, error)) *MockStore_ProcessCountByUrlAndStatus_Call {
+func (_c *MockStore_EpisodeGet_Call) RunAndReturn(run func(ctx context.Context, pageSize int, pageNumber int) ([]*domain.Episode, error)) *MockStore_EpisodeGet_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// ProcessGetByStatus provides a mock function for the type MockStore
-func (_mock *MockStore) ProcessGetByStatus(ctx context.Context, status entities.Status) ([]*entities.Process, error) {
-	ret := _mock.Called(ctx, status)
+// EpisodeGetByUrl provides a mock function for the type MockStore
+func (_mock *MockStore) EpisodeGetByUrl(ctx context.Context, url string) ([]*domain.Episode, error) {
+	ret := _mock.Called(ctx, url)
 
 	if len(ret) == 0 {
-		panic("no return value specified for ProcessGetByStatus")
+		panic("no return value specified for EpisodeGetByUrl")
 	}
 
-	var r0 []*entities.Process
+	var r0 []*domain.Episode
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, entities.Status) ([]*entities.Process, error)); ok {
-		return returnFunc(ctx, status)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) ([]*domain.Episode, error)); ok {
+		return returnFunc(ctx, url)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, entities.Status) []*entities.Process); ok {
-		r0 = returnFunc(ctx, status)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) []*domain.Episode); ok {
+		r0 = returnFunc(ctx, url)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*entities.Process)
+			r0 = ret.Get(0).([]*domain.Episode)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, entities.Status) error); ok {
-		r1 = returnFunc(ctx, status)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = returnFunc(ctx, url)
 	} else {
 		r1 = ret.Error(1)
 	}
 	return r0, r1
 }
 
-// MockStore_ProcessGetByStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ProcessGetByStatus'
-type MockStore_ProcessGetByStatus_Call struct {
+// MockStore_EpisodeGetByUrl_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'EpisodeGetByUrl'
+type MockStore_EpisodeGetByUrl_Call struct {
 	*mock.Call
 }
 
-// ProcessGetByStatus is a helper method to define mock.On call
+// EpisodeGetByUrl is a helper method to define mock.On call
 //   - ctx context.Context
-//   - status entities.Status
-func (_e *MockStore_Expecter) ProcessGetByStatus(ctx interface{}, status interface{}) *MockStore_ProcessGetByStatus_Call {
-	return &MockStore_ProcessGetByStatus_Call{Call: _e.mock.On("ProcessGetByStatus", ctx, status)}
+//   - url string
+func (_e *MockStore_Expecter) EpisodeGetByUrl(ctx interface{}, url interface{}) *MockStore_EpisodeGetByUrl_Call {
+	return &MockStore_EpisodeGetByUrl_Call{Call: _e.mock.On("EpisodeGetByUrl", ctx, url)}
 }
 
-func (_c *MockStore_ProcessGetByStatus_Call) Run(run func(ctx context.Context, status entities.Status)) *MockStore_ProcessGetByStatus_Call {
+func (_c *MockStore_EpisodeGetByUrl_Call) Run(run func(ctx context.Context, url string)) *MockStore_EpisodeGetByUrl_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 entities.Status
+		var arg1 string
 		if args[1] != nil {
-			arg1 = args[1].(entities.Status)
+			arg1 = args[1].(string)
 		}
 		run(
 			arg0,
@@ -616,69 +426,12 @@ func (_c *MockStore_ProcessGetByStatus_Call) Run(run func(ctx context.Context, s
 	return _c
 }
 
-func (_c *MockStore_ProcessGetByStatus_Call) Return(processs []*entities.Process, err error) *MockStore_ProcessGetByStatus_Call {
-	_c.Call.Return(processs, err)
+func (_c *MockStore_EpisodeGetByUrl_Call) Return(episodes []*domain.Episode, err error) *MockStore_EpisodeGetByUrl_Call {
+	_c.Call.Return(episodes, err)
 	return _c
 }
 
-func (_c *MockStore_ProcessGetByStatus_Call) RunAndReturn(run func(ctx context.Context, status entities.Status) ([]*entities.Process, error)) *MockStore_ProcessGetByStatus_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// ProcessUpsert provides a mock function for the type MockStore
-func (_mock *MockStore) ProcessUpsert(ctx context.Context, process *entities.Process) error {
-	ret := _mock.Called(ctx, process)
-
-	if len(ret) == 0 {
-		panic("no return value specified for ProcessUpsert")
-	}
-
-	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *entities.Process) error); ok {
-		r0 = returnFunc(ctx, process)
-	} else {
-		r0 = ret.Error(0)
-	}
-	return r0
-}
-
-// MockStore_ProcessUpsert_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ProcessUpsert'
-type MockStore_ProcessUpsert_Call struct {
-	*mock.Call
-}
-
-// ProcessUpsert is a helper method to define mock.On call
-//   - ctx context.Context
-//   - process *entities.Process
-func (_e *MockStore_Expecter) ProcessUpsert(ctx interface{}, process interface{}) *MockStore_ProcessUpsert_Call {
-	return &MockStore_ProcessUpsert_Call{Call: _e.mock.On("ProcessUpsert", ctx, process)}
-}
-
-func (_c *MockStore_ProcessUpsert_Call) Run(run func(ctx context.Context, process *entities.Process)) *MockStore_ProcessUpsert_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 *entities.Process
-		if args[1] != nil {
-			arg1 = args[1].(*entities.Process)
-		}
-		run(
-			arg0,
-			arg1,
-		)
-	})
-	return _c
-}
-
-func (_c *MockStore_ProcessUpsert_Call) Return(err error) *MockStore_ProcessUpsert_Call {
-	_c.Call.Return(err)
-	return _c
-}
-
-func (_c *MockStore_ProcessUpsert_Call) RunAndReturn(run func(ctx context.Context, process *entities.Process) error) *MockStore_ProcessUpsert_Call {
+func (_c *MockStore_EpisodeGetByUrl_Call) RunAndReturn(run func(ctx context.Context, url string) ([]*domain.Episode, error)) *MockStore_EpisodeGetByUrl_Call {
 	_c.Call.Return(run)
 	return _c
 }
