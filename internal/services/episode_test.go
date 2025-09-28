@@ -65,7 +65,7 @@ func (suite *TestEpisodeServiceSuite) TearDownSuite() {
 	}
 }
 
-// SetupTest is called before each test method
+// SetupSubTest is called before each subtest in the suite
 func (suite *TestEpisodeServiceSuite) SetupSubTest() {
 	suite.mockStore = mocks.NewMockStore(suite.T())
 	suite.mockPlatform = mocks.NewMockPlatform(suite.T())
@@ -163,6 +163,7 @@ func (suite *TestEpisodeServiceSuite) TestValidate() {
 
 	suite.Run("Success", func() {
 		// Arrange
+		suite.mockStore.On("EpisodeGetByUrl", suite.ctx, req.Url).Return([]*domain.Episode{}, nil)
 		suite.mockPlatform.On("Match", req).Return(true)
 
 		// Act
@@ -174,6 +175,7 @@ func (suite *TestEpisodeServiceSuite) TestValidate() {
 
 	suite.Run("NoMatchingPlatform", func() {
 		// Arrange
+		suite.mockStore.On("EpisodeGetByUrl", suite.ctx, req.Url).Return([]*domain.Episode{}, nil)
 		suite.mockPlatform.On("Match", req).Return(false)
 
 		// Act
@@ -184,26 +186,50 @@ func (suite *TestEpisodeServiceSuite) TestValidate() {
 		suite.Equal(domain.ErrDownloadPlatform, err)
 	})
 
-	suite.Run("InvalidRequest", func() {
+	suite.Run("InvalidUrl", func() {
 		// Arrange
 		invalidReq := domain.DownloadRequest{
-			ID: "test-req-invalid",
-			Source: domain.RequestSource{
-				UserID:    123,
-				ChatID:    456,
-				MessageID: 789,
-			},
+			ID:              "test-req-invalid",
+			Source:          domain.RequestSource{UserID: 123, ChatID: 456, MessageID: 789},
 			Url:             "invalid-url",
 			DownloadFormat:  domain.DownloadMp3,
 			DownloadQuality: "best",
 		}
+		// removed store expectation because validateRequest returns earlier on invalid URL
 
 		// Act
 		err := suite.service.Validate(suite.ctx, invalidReq)
 
 		// Assert
 		suite.Error(err)
-		suite.True(errors.Is(err, domain.ErrDownloadRequest))
+		suite.True(errors.Is(err, domain.ErrDownloadUrl))
+	})
+
+	suite.Run("DuplicateExists", func() {
+		// Arrange
+		existing := []*domain.Episode{{ID: 1, OriginalURL: req.Url, Title: "Existing"}}
+		suite.mockStore.On("EpisodeGetByUrl", suite.ctx, req.Url).Return(existing, nil)
+
+		// Act
+		err := suite.service.Validate(suite.ctx, req)
+
+		// Assert
+		suite.Error(err)
+		suite.True(errors.Is(err, domain.ErrDownloadExists))
+	})
+
+	suite.Run("StoreError", func() {
+		// Arrange
+		storeErr := errors.New("db failure")
+		suite.mockStore.On("EpisodeGetByUrl", suite.ctx, req.Url).Return(nil, storeErr)
+
+		// Act
+		err := suite.service.Validate(suite.ctx, req)
+
+		// Assert
+		suite.Error(err)
+		suite.True(errors.Is(err, domain.ErrEpisodeGetByUrl))
+		suite.Contains(err.Error(), storeErr.Error())
 	})
 }
 
@@ -223,6 +249,7 @@ func (suite *TestEpisodeServiceSuite) TestDownload() {
 
 	suite.Run("SuccessfulDownload", func() {
 		// Arrange
+		suite.mockStore.On("EpisodeGetByUrl", suite.ctx, req.Url).Return([]*domain.Episode{}, nil)
 		suite.mockPlatform.On("ID").Return("test-platform")
 		suite.mockPlatform.On("Match", req).Return(true)
 		suite.mockPlatform.On("Download", mock.AnythingOfType("*context.timerCtx"), req).Return(&domain.Episode{
@@ -262,6 +289,7 @@ func (suite *TestEpisodeServiceSuite) TestDownload() {
 
 	suite.Run("NoMatchingPlatform", func() {
 		// Arrange
+		suite.mockStore.On("EpisodeGetByUrl", suite.ctx, req.Url).Return([]*domain.Episode{}, nil)
 		suite.mockPlatform.On("Match", req).Return(false)
 
 		// Act
@@ -276,6 +304,7 @@ func (suite *TestEpisodeServiceSuite) TestDownload() {
 	suite.Run("PlatformDownloadFails", func() {
 		// Arrange
 		platformErr := errors.New("platform download error")
+		suite.mockStore.On("EpisodeGetByUrl", suite.ctx, req.Url).Return([]*domain.Episode{}, nil)
 		suite.mockPlatform.On("ID").Return("test-platform")
 		suite.mockPlatform.On("Match", req).Return(true)
 		suite.mockPlatform.On("Download", mock.AnythingOfType("*context.timerCtx"), req).
@@ -294,14 +323,11 @@ func (suite *TestEpisodeServiceSuite) TestDownload() {
 	suite.Run("StoreCreateFails", func() {
 		// Arrange
 		storeErr := errors.New("store create error")
+		suite.mockStore.On("EpisodeGetByUrl", suite.ctx, req.Url).Return([]*domain.Episode{}, nil)
 		suite.mockPlatform.On("ID").Return("test-platform")
 		suite.mockPlatform.On("Match", req).Return(true)
 		suite.mockPlatform.On("Download", mock.AnythingOfType("*context.timerCtx"), req).
-			Return(&domain.Episode{
-				Title:       "Test Episode",
-				MediaFile:   "audio_test.mp3",
-				OriginalURL: req.Url,
-			}, nil)
+			Return(&domain.Episode{Title: "Test Episode", MediaFile: "audio_test.mp3", OriginalURL: req.Url}, nil)
 		suite.mockStore.On("EpisodeCreate", suite.ctx, mock.AnythingOfType("*domain.Episode")).
 			Return(storeErr)
 
@@ -320,10 +346,10 @@ func (suite *TestEpisodeServiceSuite) TestDownload() {
 		shortCtx, cancel := context.WithTimeout(suite.ctx, 10*time.Millisecond)
 		defer cancel()
 
+		suite.mockStore.On("EpisodeGetByUrl", shortCtx, req.Url).Return([]*domain.Episode{}, nil)
 		suite.mockPlatform.On("ID").Return("test-platform")
 		suite.mockPlatform.On("Match", req).Return(true)
-		suite.mockPlatform.On("Download", mock.AnythingOfType("*context.cancelCtx"), req).
-			Return(nil, context.DeadlineExceeded)
+		suite.mockPlatform.On("Download", mock.Anything, req).Return(nil, context.DeadlineExceeded)
 
 		// Act
 		result, err := suite.service.Download(shortCtx, req)
@@ -333,6 +359,35 @@ func (suite *TestEpisodeServiceSuite) TestDownload() {
 		suite.Nil(result)
 		suite.True(errors.Is(err, domain.ErrDownloadFailed))
 		suite.Contains(err.Error(), context.DeadlineExceeded.Error())
+	})
+
+	suite.Run("DuplicateExists", func() {
+		// Arrange - existing episode means validation fails early
+		existing := []*domain.Episode{{ID: 1, OriginalURL: req.Url, Title: "Existing"}}
+		suite.mockStore.On("EpisodeGetByUrl", suite.ctx, req.Url).Return(existing, nil)
+
+		// Act
+		result, err := suite.service.Download(suite.ctx, req)
+
+		// Assert
+		suite.Error(err)
+		suite.Nil(result)
+		suite.True(errors.Is(err, domain.ErrDownloadExists))
+	})
+
+	suite.Run("StoreGetByUrlError", func() {
+		// Arrange
+		storeErr := errors.New("db failure")
+		suite.mockStore.On("EpisodeGetByUrl", suite.ctx, req.Url).Return(nil, storeErr)
+
+		// Act
+		result, err := suite.service.Download(suite.ctx, req)
+
+		// Assert
+		suite.Error(err)
+		suite.Nil(result)
+		suite.True(errors.Is(err, domain.ErrEpisodeGetByUrl))
+		suite.Contains(err.Error(), storeErr.Error())
 	})
 }
 
@@ -344,27 +399,20 @@ func (suite *TestEpisodeServiceSuite) TestFindPlatform() {
 		service := NewEpisodeService(suite.cfg, suite.log, suite.mockStore, suite.mockPlatform, mockPlatform2)
 
 		req := domain.DownloadRequest{
-			ID: "test-req-multi",
-			Source: domain.RequestSource{
-				UserID:    123,
-				ChatID:    456,
-				MessageID: 789,
-			},
+			ID:              "test-req-multi",
+			Source:          domain.RequestSource{UserID: 123, ChatID: 456, MessageID: 789},
 			Url:             "https://example.com/video",
 			DownloadFormat:  domain.DownloadMp3,
 			DownloadQuality: "best",
 		}
 
 		// First platform doesn't match, second does
+		suite.mockStore.On("EpisodeGetByUrl", suite.ctx, req.Url).Return([]*domain.Episode{}, nil)
 		suite.mockPlatform.On("Match", req).Return(false)
 		mockPlatform2.On("ID").Return("test-platform-2")
 		mockPlatform2.On("Match", req).Return(true)
 		mockPlatform2.On("Download", mock.AnythingOfType("*context.timerCtx"), req).
-			Return(&domain.Episode{
-				Title:       "Test Episode",
-				MediaFile:   "test.mp3",
-				OriginalURL: req.Url,
-			}, nil)
+			Return(&domain.Episode{Title: "Test Episode", MediaFile: "test.mp3", OriginalURL: req.Url}, nil)
 		suite.mockStore.On("EpisodeCreate", suite.ctx, mock.AnythingOfType("*domain.Episode")).
 			Return(nil).Run(func(args mock.Arguments) {
 			episode := args.Get(1).(*domain.Episode)
@@ -388,16 +436,13 @@ func (suite *TestEpisodeServiceSuite) TestFindPlatform() {
 		// Arrange
 		service := NewEpisodeService(suite.cfg, suite.log, suite.mockStore) // No platforms
 		req := domain.DownloadRequest{
-			ID: "test-req-no-platforms",
-			Source: domain.RequestSource{
-				UserID:    123,
-				ChatID:    456,
-				MessageID: 789,
-			},
+			ID:              "test-req-no-platforms",
+			Source:          domain.RequestSource{UserID: 123, ChatID: 456, MessageID: 789},
 			Url:             "https://example.com/video",
 			DownloadFormat:  domain.DownloadMp3,
 			DownloadQuality: "best",
 		}
+		suite.mockStore.On("EpisodeGetByUrl", suite.ctx, req.Url).Return([]*domain.Episode{}, nil)
 
 		// Act
 		result, err := service.Download(suite.ctx, req)
@@ -411,77 +456,72 @@ func (suite *TestEpisodeServiceSuite) TestFindPlatform() {
 
 // TestValidateRequest tests the validateRequest method
 func (suite *TestEpisodeServiceSuite) TestValidateRequest() {
-	// create a service instance explicitly to ensure cfg is applied
-	service := NewEpisodeService(suite.cfg, suite.log, suite.mockStore, suite.mockPlatform)
 
 	suite.Run("Success", func() {
-		req := domain.DownloadRequest{
-			ID:              "req-success",
-			Url:             "https://example.com/video",
-			DownloadFormat:  domain.DownloadMp3,
-			DownloadQuality: "128k",
-		}
-		err := service.validateRequest(&req)
+		req := domain.DownloadRequest{ID: "req-success", Url: "https://example.com/video", DownloadFormat: domain.DownloadMp3, DownloadQuality: "128k"}
+		suite.mockStore.On("EpisodeGetByUrl", suite.ctx, req.Url).Return([]*domain.Episode{}, nil)
+		err := suite.service.validateRequest(suite.ctx, req)
 		suite.NoError(err)
 	})
 
 	suite.Run("InvalidURL", func() {
-		req := domain.DownloadRequest{
-			ID:              "req-bad-url",
-			Url:             "ht!tp://bad-url",
-			DownloadFormat:  domain.DownloadMp3,
-			DownloadQuality: "128k",
-		}
-		err := service.validateRequest(&req)
+		req := domain.DownloadRequest{ID: "req-bad-url", Url: "ht!tp://bad-url", DownloadFormat: domain.DownloadMp3, DownloadQuality: "128k"}
+		// no EpisodeGetByUrl expectation (URL validation fails first)
+		err := suite.service.validateRequest(suite.ctx, req)
 		suite.Error(err)
-		suite.Contains(err.Error(), "url validation failed")
+		suite.True(errors.Is(err, domain.ErrDownloadUrl))
 	})
 
 	suite.Run("UnsupportedFormat", func() {
-		req := domain.DownloadRequest{
-			ID:              "req-bad-format",
-			Url:             "https://example.com/video",
-			DownloadFormat:  domain.DownloadFormat("wav"),
-			DownloadQuality: "128k",
-		}
-		err := service.validateRequest(&req)
+		req := domain.DownloadRequest{ID: "req-bad-format", Url: "https://example.com/video", DownloadFormat: domain.DownloadFormat("wav"), DownloadQuality: "128k"}
+		// no EpisodeGetByUrl expectation (format validation fails before store call)
+		err := suite.service.validateRequest(suite.ctx, req)
 		suite.Error(err)
-		suite.Contains(err.Error(), "download format validation failed")
+		suite.True(errors.Is(err, domain.ErrDownloadFormat))
 	})
 
 	suite.Run("UnsupportedQuality", func() {
-		req := domain.DownloadRequest{
-			ID:              "req-bad-quality",
-			Url:             "https://example.com/video",
-			DownloadFormat:  domain.DownloadMp3,
-			DownloadQuality: ";rm -rf /",
-		}
-		err := service.validateRequest(&req)
+		req := domain.DownloadRequest{ID: "req-bad-quality", Url: "https://example.com/video", DownloadFormat: domain.DownloadMp3, DownloadQuality: ";rm -rf /"}
+		// no EpisodeGetByUrl expectation (quality validation fails before store call)
+		err := suite.service.validateRequest(suite.ctx, req)
 		suite.Error(err)
-		suite.Contains(err.Error(), "download quality validation failed")
+		suite.True(errors.Is(err, domain.ErrDownloadQuality))
 	})
 
 	suite.Run("EmptyFormat", func() {
-		req := domain.DownloadRequest{
-			ID:              "req-empty-format",
-			Url:             "https://example.com/video",
-			DownloadFormat:  "",
-			DownloadQuality: "128k",
-		}
-		err := service.validateRequest(&req)
+		req := domain.DownloadRequest{ID: "req-empty-format", Url: "https://example.com/video", DownloadFormat: "", DownloadQuality: "128k"}
+		// no EpisodeGetByUrl expectation
+		err := suite.service.validateRequest(suite.ctx, req)
 		suite.Error(err)
+		suite.True(errors.Is(err, domain.ErrDownloadFormat))
 		suite.Contains(err.Error(), "download format not specified")
 	})
 
 	suite.Run("EmptyQuality", func() {
-		req := domain.DownloadRequest{
-			ID:              "req-empty-quality",
-			Url:             "https://example.com/video",
-			DownloadFormat:  domain.DownloadMp3,
-			DownloadQuality: "",
-		}
-		err := service.validateRequest(&req)
+		req := domain.DownloadRequest{ID: "req-empty-quality", Url: "https://example.com/video", DownloadFormat: domain.DownloadMp3, DownloadQuality: ""}
+		// no EpisodeGetByUrl expectation
+		err := suite.service.validateRequest(suite.ctx, req)
 		suite.Error(err)
+		suite.True(errors.Is(err, domain.ErrDownloadQuality))
 		suite.Contains(err.Error(), "download quality is empty")
+	})
+
+	suite.Run("DuplicateExists", func() {
+		req := domain.DownloadRequest{ID: "req-dup", Url: "https://example.com/video", DownloadFormat: domain.DownloadMp3, DownloadQuality: "128k"}
+		existing := []*domain.Episode{{ID: 5, OriginalURL: req.Url}}
+		suite.mockStore.On("EpisodeGetByUrl", suite.ctx, req.Url).Return(existing, nil)
+		err := suite.service.validateRequest(suite.ctx, req)
+		suite.Error(err)
+		suite.True(errors.Is(err, domain.ErrDownloadExists))
+	})
+
+	suite.Run("StoreError", func() {
+		req := domain.DownloadRequest{ID: "req-store-err", Url: "https://example.com/video", DownloadFormat: domain.DownloadMp3, DownloadQuality: "128k"}
+		storeErr := errors.New("db failure")
+		suite.mockStore.On("EpisodeGetByUrl", suite.ctx, req.Url).Return(nil, storeErr)
+		err := suite.service.validateRequest(suite.ctx, req)
+		suite.Error(err)
+		suite.True(errors.Is(err, domain.ErrEpisodeGetByUrl))
+		suite.Contains(err.Error(), storeErr.Error())
 	})
 }

@@ -60,8 +60,8 @@ func (s *EpisodeService) Init(ctx context.Context) error {
 
 func (s *EpisodeService) Validate(ctx context.Context, req domain.DownloadRequest) error {
 	// validate request
-	if err := s.validateRequest(&req); err != nil {
-		return fmt.Errorf("%w: %v", domain.ErrDownloadRequest, err)
+	if err := s.validateRequest(ctx, req); err != nil {
+		return err
 	}
 	// find platform
 	if s.findPlatform(req) == nil {
@@ -73,8 +73,8 @@ func (s *EpisodeService) Validate(ctx context.Context, req domain.DownloadReques
 
 // Download downloads an Episode from the given URL using the appropriate platform.
 func (s *EpisodeService) Download(ctx context.Context, req domain.DownloadRequest) (*domain.Episode, error) {
-	if err := s.validateRequest(&req); err != nil {
-		return nil, fmt.Errorf("%w: %v", domain.ErrDownloadRequest, err)
+	if err := s.validateRequest(ctx, req); err != nil {
+		return nil, fmt.Errorf("request validation failed: %w", err)
 	}
 
 	platform := s.findPlatform(req)
@@ -112,15 +112,24 @@ func (s *EpisodeService) findPlatform(req domain.DownloadRequest) domain.Platfor
 }
 
 // validateRequest validates the download request.
-func (s *EpisodeService) validateRequest(req *domain.DownloadRequest) error {
+func (s *EpisodeService) validateRequest(ctx context.Context, req domain.DownloadRequest) error {
 	if err := s.validateUrl(req.Url); err != nil {
-		return fmt.Errorf("url validation failed: %w", err)
+		return fmt.Errorf("%w: %w", domain.ErrDownloadUrl, err)
 	}
 	if err := s.validateDownloadFormat(req.DownloadFormat); err != nil {
-		return fmt.Errorf("download format validation failed: %w", err)
+		return fmt.Errorf("%w: %w", domain.ErrDownloadFormat, err)
 	}
 	if err := s.validateDownloadQuality(req.DownloadQuality); err != nil {
-		return fmt.Errorf("download quality validation failed: %w", err)
+		return fmt.Errorf("%w: %w", domain.ErrDownloadQuality, err)
+	}
+
+	//check if episode already exists
+	existing, err := s.store.EpisodeGetByUrl(ctx, req.Url)
+	if err != nil {
+		return fmt.Errorf("%w: %w", domain.ErrEpisodeGetByUrl, err)
+	}
+	if len(existing) > 0 {
+		return domain.ErrDownloadExists
 	}
 	return nil
 }
@@ -128,7 +137,7 @@ func (s *EpisodeService) validateRequest(req *domain.DownloadRequest) error {
 func (s *EpisodeService) validateUrl(href string) error {
 	u, err := url.Parse(href)
 	if err != nil {
-		return fmt.Errorf("invalid url: %w", err)
+		return fmt.Errorf("failed to parse url: %w", err)
 	}
 
 	if u.Scheme != "http" && u.Scheme != "https" {
