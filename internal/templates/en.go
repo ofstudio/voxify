@@ -1,4 +1,4 @@
-package locales
+package templates
 
 const (
 	// Message templates
