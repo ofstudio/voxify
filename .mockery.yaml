@@ -14,3 +14,8 @@ packages:
       Platform:
       EventBus:
       Store:
+  github.com/ofstudio/voxify/pkg/telegram:
+    config:
+      dir: './internal/mocks'
+    interfaces:
+      Bot:
