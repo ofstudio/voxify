@@ -2,6 +2,7 @@ package templates
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/ofstudio/voxify/internal/domain"
 )
@@ -23,7 +24,7 @@ Just paste any video or podcast URL to get started!
 Perfect for creating your own podcast collection or listening to content offline.`
 
 	MsgDownloadStarted = "🔄 Started downloading podcast..."
-	MsgDownloadSuccess = "✅ Podcast downloaded successfully!\n\n🎧 %s"
+	msgDownloadSuccess = "✅ Podcast downloaded successfully!\n\n🎧 %s"
 	MsgBuildSuccess    = "✅ RSS feed built successfully!"
 
 	// Error messages
@@ -41,6 +42,11 @@ Perfect for creating your own podcast collection or listening to content offline
 	MsgDownloadBusy        = "⏳ Another download is in progress. Please try again later..."
 	MsgInvalidRequest      = "⚠️ This request is invalid."
 )
+
+// MsgDownloadSuccess formats the download success message with the episode title.
+func MsgDownloadSuccess(episodeTitle string) string {
+	return fmt.Sprintf(msgDownloadSuccess, episodeTitle)
+}
 
 // MsgError maps an error to a user-friendly message.
 func MsgError(err error) string {
