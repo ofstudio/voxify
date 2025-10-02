@@ -47,15 +47,22 @@ func (s *FeedService) Build(ctx context.Context) error {
 	// Get all episodes from store
 	episodes, err := s.store.EpisodeGet(ctx, 0, 0)
 	if err != nil {
-		return fmt.Errorf("%w: %w", domain.ErrEpisodeGet, err)
+		return fmt.Errorf("failed to get episodes: %w", err)
 	}
-	// Build RSS feed
-	if err = s.buildRss(ctx, episodes); err != nil {
-		return fmt.Errorf("failed to build rss feed: %w", err)
-	}
+
 	// Build landing page
 	if err = s.buildLanding(ctx, episodes); err != nil {
-		return fmt.Errorf("failed to build landing page: %w", err)
+		return fmt.Errorf("%w: %w", domain.ErrBuildLandingFailed, err)
+	}
+
+	if len(episodes) == 0 {
+		s.log.Info("[feed service] no episodes found, skipping feed build")
+		return nil
+	}
+
+	// Build RSS feed
+	if err = s.buildRss(ctx, episodes); err != nil {
+		return fmt.Errorf("%w: %w", domain.ErrBuildFeedFailed, err)
 	}
 
 	return nil
@@ -67,17 +74,18 @@ func (s *FeedService) Info(ctx context.Context) (*domain.FeedInfo, error) {
 	// Count episodes
 	count, err := s.store.EpisodeCount(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", domain.ErrEpisodeCount, err)
+		return nil, fmt.Errorf("failed to count episodes: %w", err)
 	}
 
 	// If there are episodes, get the last published
 	if count > 0 {
-		recent, err := s.store.EpisodeGet(ctx, 1, 0)
+		var recents []*domain.Episode
+		recents, err = s.store.EpisodeGet(ctx, 1, 0)
 		if err != nil {
-			return nil, fmt.Errorf("%w: %w", domain.ErrEpisodeGet, err)
+			return nil, fmt.Errorf("failed to get most recent episode: %w", err)
 		}
-		if len(recent) > 0 {
-			pubDate = recent[0].CreatedAt
+		if len(recents) > 0 {
+			pubDate = recents[0].CreatedAt
 		}
 	}
 
@@ -109,6 +117,9 @@ func (s *FeedService) feedInfo(episodeCount int, pubDate time.Time) *domain.Feed
 }
 
 func (s *FeedService) buildRss(ctx context.Context, episodes []*domain.Episode) error {
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
 	s.log.Info("[feed service] building podcast feed")
 
 	// Create podcast feed
@@ -126,7 +137,7 @@ func (s *FeedService) buildRss(ctx context.Context, episodes []*domain.Episode) 
 
 	// Write feed to file
 	if err := s.saveFeed(feed); err != nil {
-		return fmt.Errorf("%w: %w", domain.ErrFeedSave, err)
+		return fmt.Errorf("failed to save feed file: %w", err)
 	}
 
 	s.log.Info("[feed service] podcast feed built", "episodes_count", len(episodes))
@@ -236,6 +247,9 @@ func (s *FeedService) getGenerator() string {
 
 // buildLanding generates or updates the landing page HTML file.
 func (s *FeedService) buildLanding(ctx context.Context, episodes []*domain.Episode) error {
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
 	if templates.LandingTemplate == nil {
 		return errors.New("landing page template is not initialized")
 

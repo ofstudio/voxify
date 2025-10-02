@@ -96,9 +96,32 @@ func (suite *TestFeedServiceSuite) TestBuild() {
 		err := suite.service.Build(suite.ctx)
 
 		// Assert
-		suite.Error(err)
-		suite.Contains(err.Error(), "failed to build rss feed")
-		// No feed file should be created when there are no episodes
+		// 1) Landing page should be created
+		suite.Require().NoError(err)
+		landingPath := filepath.Join(suite.cfg.PublicDir, "index.html")
+		suite.FileExists(landingPath)
+
+		// 2) Landing page must contain FeedTitle and FeedDescription
+		content, readErr := os.ReadFile(landingPath)
+		suite.NoError(readErr)
+		page := string(content)
+		suite.Contains(page, suite.cfg.FeedTitle)
+		suite.Contains(page, suite.cfg.FeedDescription)
+
+		// 3) Landing page must NOT contain the feed filename
+		suite.NotContains(page, suite.cfg.FeedFileName)
+
+		// When no episodes exist, RSS elements should not be present in landing page
+		suite.NotContains(page, `<link rel="alternate" type="application/rss+xml"`, "Should not contain RSS link tag in head when no episodes")
+		suite.NotContains(page, "RSS feed", "Should not show RSS feed button when no episodes")
+
+		// 4) RSS feed file must NOT be created
+		feedPath := filepath.Join(suite.cfg.PublicDir, suite.cfg.FeedFileName)
+		if _, statErr := os.Stat(feedPath); statErr == nil {
+			suite.Failf("feed file should not exist", "unexpected feed file present: %s", feedPath)
+		} else {
+			suite.True(os.IsNotExist(statErr))
+		}
 	})
 
 	suite.Run("Success_WithEpisodes", func() {
@@ -198,8 +221,9 @@ func (suite *TestFeedServiceSuite) TestBuild() {
 
 		// Assert
 		suite.Error(err)
-		suite.Contains(err.Error(), "failed to build rss feed")
-		suite.Contains(err.Error(), "failed to save feed to file")
+		// Error should be wrapped with domain.ErrBuildFeedFailed and include save/create failure
+		suite.Contains(err.Error(), "ailed to build landing page")
+		suite.Contains(err.Error(), "failed to create landing page file")
 	})
 
 	suite.Run("Error_ContextCancelled", func() {
@@ -221,20 +245,6 @@ func (suite *TestFeedServiceSuite) TestBuild() {
 
 // TestBuild_EdgeCases tests edge cases for Build method
 func (suite *TestFeedServiceSuite) TestBuild_EdgeCases() {
-	suite.Run("EmptyConfig", func() {
-		// Arrange
-		emptyCfg := config.Settings{}
-		service := NewFeedService(emptyCfg, suite.log, suite.mockStore)
-		suite.mockStore.On("EpisodeGet", suite.ctx, 0, 0).Return([]*domain.Episode{}, nil)
-
-		// Act
-		err := service.Build(suite.ctx)
-
-		// Assert
-		suite.Error(err) // Should fail due to empty episodes or other validation
-		suite.Contains(err.Error(), "failed to build rss feed")
-	})
-
 	suite.Run("LargeNumberOfEpisodes", func() {
 		// Arrange - create many episodes to test performance
 		now := time.Now()
@@ -408,7 +418,7 @@ func (suite *TestFeedServiceSuite) TestInfo() {
 
 		// Assert
 		suite.Error(err)
-		suite.Contains(err.Error(), "failed to get episodes")
+		suite.Contains(err.Error(), "failed to get most recent episode")
 		suite.ErrorIs(err, expectedErr)
 	})
 
