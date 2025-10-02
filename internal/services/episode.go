@@ -65,7 +65,7 @@ func (s *EpisodeService) Validate(ctx context.Context, req domain.DownloadReques
 	}
 	// find platform
 	if s.findPlatform(req) == nil {
-		return domain.ErrDownloadPlatform
+		return domain.ErrNoMatchingPlatform
 	}
 
 	return nil
@@ -79,7 +79,7 @@ func (s *EpisodeService) Download(ctx context.Context, req domain.DownloadReques
 
 	platform := s.findPlatform(req)
 	if platform == nil {
-		return nil, domain.ErrDownloadPlatform
+		return nil, domain.ErrNoMatchingPlatform
 	}
 
 	s.log.Info("[episode service] downloading episode",
@@ -114,10 +114,10 @@ func (s *EpisodeService) findPlatform(req domain.DownloadRequest) domain.Platfor
 // validateRequest validates the download request.
 func (s *EpisodeService) validateRequest(ctx context.Context, req domain.DownloadRequest) error {
 	if err := s.validateUrl(req.Url); err != nil {
-		return fmt.Errorf("%w: %w", domain.ErrDownloadUrl, err)
+		return fmt.Errorf("%w: %w", domain.ErrInvalidUrl, err)
 	}
 	if err := s.validateDownloadFormat(req.DownloadFormat); err != nil {
-		return fmt.Errorf("%w: %w", domain.ErrDownloadFormat, err)
+		return fmt.Errorf("%w: %w", domain.ErrInvalidFormat, err)
 	}
 	if err := s.validateDownloadQuality(req.DownloadQuality); err != nil {
 		return fmt.Errorf("%w: %w", domain.ErrDownloadQuality, err)

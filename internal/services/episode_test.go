@@ -183,7 +183,7 @@ func (suite *TestEpisodeServiceSuite) TestValidate() {
 
 		// Assert
 		suite.Error(err)
-		suite.Equal(domain.ErrDownloadPlatform, err)
+		suite.Equal(domain.ErrNoMatchingPlatform, err)
 	})
 
 	suite.Run("InvalidUrl", func() {
@@ -202,7 +202,7 @@ func (suite *TestEpisodeServiceSuite) TestValidate() {
 
 		// Assert
 		suite.Error(err)
-		suite.True(errors.Is(err, domain.ErrDownloadUrl))
+		suite.True(errors.Is(err, domain.ErrInvalidUrl))
 	})
 
 	suite.Run("DuplicateExists", func() {
@@ -298,7 +298,7 @@ func (suite *TestEpisodeServiceSuite) TestDownload() {
 		// Assert
 		suite.Error(err)
 		suite.Nil(result)
-		suite.Equal(domain.ErrDownloadPlatform, err)
+		suite.Equal(domain.ErrNoMatchingPlatform, err)
 	})
 
 	suite.Run("PlatformDownloadFails", func() {
@@ -450,7 +450,7 @@ func (suite *TestEpisodeServiceSuite) TestFindPlatform() {
 		// Assert
 		suite.Error(err)
 		suite.Nil(result)
-		suite.Equal(domain.ErrDownloadPlatform, err)
+		suite.Equal(domain.ErrNoMatchingPlatform, err)
 	})
 }
 
@@ -469,7 +469,7 @@ func (suite *TestEpisodeServiceSuite) TestValidateRequest() {
 		// no EpisodeGetByUrl expectation (URL validation fails first)
 		err := suite.service.validateRequest(suite.ctx, req)
 		suite.Error(err)
-		suite.True(errors.Is(err, domain.ErrDownloadUrl))
+		suite.True(errors.Is(err, domain.ErrInvalidUrl))
 	})
 
 	suite.Run("UnsupportedFormat", func() {
@@ -477,7 +477,7 @@ func (suite *TestEpisodeServiceSuite) TestValidateRequest() {
 		// no EpisodeGetByUrl expectation (format validation fails before store call)
 		err := suite.service.validateRequest(suite.ctx, req)
 		suite.Error(err)
-		suite.True(errors.Is(err, domain.ErrDownloadFormat))
+		suite.True(errors.Is(err, domain.ErrInvalidFormat))
 	})
 
 	suite.Run("UnsupportedQuality", func() {
@@ -493,7 +493,7 @@ func (suite *TestEpisodeServiceSuite) TestValidateRequest() {
 		// no EpisodeGetByUrl expectation
 		err := suite.service.validateRequest(suite.ctx, req)
 		suite.Error(err)
-		suite.True(errors.Is(err, domain.ErrDownloadFormat))
+		suite.True(errors.Is(err, domain.ErrInvalidFormat))
 		suite.Contains(err.Error(), "download format not specified")
 	})
 
