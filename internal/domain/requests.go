@@ -39,6 +39,19 @@ func (r BuildRequest) LogValue() slog.Value {
 	return slog.GroupValue(attrs...)
 }
 
+type FeedInfoRequest struct {
+	ID     string        // Unique request id
+	Source RequestSource // User who made the request
+}
+
+// LogValue implements [slog.LogValuer] interface
+func (r FeedInfoRequest) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("id", r.ID),
+		slog.Any("source", r.Source),
+	)
+}
+
 // RequestSource contains data about user who made the RequestType.
 type RequestSource struct {
 	UserID    int64 // Telegram user ID

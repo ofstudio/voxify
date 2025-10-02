@@ -44,6 +44,26 @@ func (r BuildResponse) LogValue() slog.Value {
 	return slog.GroupValue(attrs...)
 }
 
+type FeedInfoResponse struct {
+	Status   ResponseStatus
+	Error    error
+	FeedInfo *FeedInfo
+	Request  FeedInfoRequest
+}
+
+// LogValue implements [slog.LogValuer] interface
+func (r FeedInfoResponse) LogValue() slog.Value {
+	attrs := []slog.Attr{slog.String("status", r.Status.String())}
+	if r.Error != nil {
+		attrs = append(attrs, slog.String("error", r.Error.Error()))
+	}
+	if r.FeedInfo != nil {
+		attrs = append(attrs, slog.Any("feed", r.FeedInfo))
+	}
+	attrs = append(attrs, slog.Any("request", r.Request))
+	return slog.GroupValue(attrs...)
+}
+
 // ResponseStatus is the current status of the Response.
 type ResponseStatus int
 
