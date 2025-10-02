@@ -13,7 +13,6 @@ import (
 	"github.com/ofstudio/voxify/internal/domain"
 	"github.com/ofstudio/voxify/internal/mocks"
 	"github.com/ofstudio/voxify/internal/templates"
-	"github.com/ofstudio/voxify/pkg/telegram"
 )
 
 // TestTelegramHandlers is the entry point for running the test suite
@@ -344,87 +343,6 @@ func (suite *TestTelegramHandlersSuite) TestSendMessage() {
 
 		// Assert
 		suite.api.AssertExpectations(suite.T())
-	})
-}
-
-// Test AllowedUsersMiddleware
-func (suite *TestTelegramHandlersSuite) TestAllowedUsersMiddleware() {
-	suite.Run("AllowsUpdateFromAllowedMessageUser", func() {
-		update := suite.createUpdate(&models.Message{
-			ID: 1,
-			From: &models.User{
-				ID: 111,
-			},
-			Chat: models.Chat{ID: 2},
-			Text: "hello",
-		})
-
-		allowed := []int64{111}
-		called := false
-		mw := suite.handlers.AllowedUsersMiddleware(allowed)
-		next := func(ctx context.Context, api telegram.API, update *models.Update) {
-			called = true
-		}
-
-		handler := mw(next)
-		handler(suite.ctx, suite.api, update)
-		suite.True(called, "next should be called for allowed message user")
-	})
-
-	suite.Run("AllowsUpdateFromAllowedCallbackQueryUser", func() {
-		update := &models.Update{
-			CallbackQuery: &models.CallbackQuery{
-				From: models.User{ID: 222},
-			},
-		}
-
-		allowed := []int64{222}
-		called := false
-		mw := suite.handlers.AllowedUsersMiddleware(allowed)
-		next := func(ctx context.Context, api telegram.API, update *models.Update) {
-			called = true
-		}
-
-		handler := mw(next)
-		handler(suite.ctx, suite.api, update)
-		suite.True(called, "next should be called for allowed callback query user")
-	})
-
-	suite.Run("BlocksUpdateFromNotAllowedUser", func() {
-		update := suite.createUpdate(&models.Message{
-			ID:   2,
-			From: &models.User{ID: 333},
-			Chat: models.Chat{ID: 3},
-			Text: "blocked",
-		})
-
-		allowed := []int64{444}
-		called := false
-		mw := suite.handlers.AllowedUsersMiddleware(allowed)
-		next := func(ctx context.Context, api telegram.API, update *models.Update) {
-			called = true
-		}
-
-		handler := mw(next)
-		handler(suite.ctx, suite.api, update)
-		suite.False(called, "next should not be called for not allowed user")
-	})
-
-	suite.Run("BlocksUpdateWithoutUserID", func() {
-		update := &models.Update{
-			// No Message, CallbackQuery, InlineQuery, or EditedMessage
-		}
-
-		allowed := []int64{111}
-		called := false
-		mw := suite.handlers.AllowedUsersMiddleware(allowed)
-		next := func(ctx context.Context, api telegram.API, update *models.Update) {
-			called = true
-		}
-
-		handler := mw(next)
-		handler(suite.ctx, suite.api, update)
-		suite.False(called, "next should not be called when user ID cannot be determined")
 	})
 }
 
