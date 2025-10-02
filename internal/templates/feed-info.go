@@ -21,5 +21,6 @@ const feedInfoTemplateHTML =
 {{if .WebsiteLink}}🔗 <a href="{{.WebsiteLink}}">Website</a>{{end}}
 {{if gt .EpisodeCount 0}}🎧 Number of episodes: {{.EpisodeCount}}{{else}}📭 No episodes yet{{end}}
 {{if .Explicit}}🔞 Explicit content{{end}}
+{{if gt .EpisodeCount 0}}
 
-📡 RSS: {{.RSSLink}}`
+📡 RSS: {{.RSSLink}}{{end}}`

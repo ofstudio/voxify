@@ -25,10 +25,11 @@ func (suite *TestFeedInfoTemplateSuite) SetupSuite() {
 // TestFeedInfoTemplateGeneration basic rendering
 func (suite *TestFeedInfoTemplateSuite) TestFeedInfoTemplateGeneration() {
 	data := domain.FeedInfo{
-		Title:       "Test Podcast",
-		Description: "A test podcast for feed-info template",
-		Language:    "en",
-		RSSLink:     "https://example.com/rss.xml",
+		Title:        "Test Podcast",
+		Description:  "A test podcast for feed-info template",
+		Language:     "en",
+		RSSLink:      "https://example.com/rss.xml",
+		EpisodeCount: 5, // Set episode count > 0 to ensure RSS is displayed
 	}
 
 	var buf bytes.Buffer
@@ -42,12 +43,14 @@ func (suite *TestFeedInfoTemplateSuite) TestFeedInfoTemplateGeneration() {
 	suite.Contains(html, "A test podcast for feed-info template")
 	suite.Contains(html, "Language: en")
 	suite.Contains(html, "📡 RSS: https://example.com/rss.xml")
+	suite.Contains(html, "🎧 Number of episodes: 5")
 }
 
 // TestFeedInfoTemplateWithEmptyFields checks optional parts are omitted
 func (suite *TestFeedInfoTemplateSuite) TestFeedInfoTemplateWithEmptyFields() {
 	data := domain.FeedInfo{
-		Title: "Minimal Podcast",
+		Title:        "Minimal Podcast",
+		EpisodeCount: 0, // Explicitly set to 0 to test RSS hiding logic
 	}
 
 	var buf bytes.Buffer
@@ -63,6 +66,10 @@ func (suite *TestFeedInfoTemplateSuite) TestFeedInfoTemplateWithEmptyFields() {
 	suite.NotContains(html, "Artwork")
 	suite.NotContains(html, "Website")
 	suite.NotContains(html, "🔞 Explicit content")
+
+	// When no episodes exist, RSS elements should not be present
+	suite.NotContains(html, "📡 RSS:")
+	suite.NotContains(html, "RSS feed")
 }
 
 // TestFeedInfoTemplateWithFullFields ensures all sections render correctly
@@ -105,6 +112,9 @@ func (suite *TestFeedInfoTemplateSuite) TestFeedInfoTemplateWithFullFields() {
 	// Categories are flattened by categoriesList; ensure main and subcategory appear
 	suite.Contains(html, "Technology")
 	suite.Contains(html, "Software")
+
+	// When episodes exist, RSS elements should be present
+	suite.Contains(html, "📡 RSS: https://example.com/rss.xml")
 }
 
 // TestFeedInfoTemplate runs the suite
