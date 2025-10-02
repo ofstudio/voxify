@@ -9,7 +9,7 @@ import (
 // LandingData is the input context for LandingTemplate
 type LandingData struct {
 	Feed     domain.FeedInfo
-	Episodes []domain.Episode
+	Episodes []*domain.Episode
 }
 
 // LandingTemplate - template for the podcast landing page.
@@ -26,8 +26,9 @@ const landingTemplateHTML =
 	<meta name="keywords" content="{{ .Feed.Keywords }}">
     <title>{{ .Feed.Title }}</title>
     <meta name="color-scheme" content="light dark">
-    {{ if .Feed.RSSLink }}
-        <link rel="alternate" type="application/rss+xml" title="Podcast RSS" href="{{ .Feed.RSSLink }}">{{ end }}
+	{{if .Episodes }}
+    {{ if .Feed.RSSLink }}<link rel="alternate" type="application/rss+xml" title="Podcast RSS" href="{{ .Feed.RSSLink }}">{{ end }}
+	{{end}}
     <style>
         :root {
             --bg: #f6f7fb;
@@ -343,6 +344,7 @@ const landingTemplateHTML =
                 </div>
             {{ end }}
             <div class="actions">
+				{{if .Episodes }}
                 {{ if .Feed.RSSLink }}
                     <a class="btn" href="{{ .Feed.RSSLink }}">
                         <svg class="rss" viewBox="0 0 24 24" aria-hidden="true">
@@ -352,6 +354,7 @@ const landingTemplateHTML =
                         RSS feed
                     </a>
                 {{ end }}
+				{{ end }}
             </div>
         </div>
     </section>

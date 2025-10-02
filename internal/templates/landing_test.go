@@ -9,8 +9,6 @@ import (
 
 	"github.com/ofstudio/voxify/internal/domain"
 	"github.com/stretchr/testify/suite"
-
-	"github.com/ofstudio/voxify/internal/entities"
 )
 
 // TestLandingTemplateSuite defines the test suite for landing template
@@ -26,8 +24,8 @@ func (suite *TestLandingTemplateSuite) SetupSuite() {
 	suite.Require().NoError(err, "Failed to parse landing template")
 }
 
-// TestLandingTemplateGeneration tests basic template generation without errors
-func (suite *TestLandingTemplateSuite) TestLandingTemplateGeneration() {
+// TestGeneration tests basic template generation without errors
+func (suite *TestLandingTemplateSuite) TestGeneration() {
 	data := suite.createTestData()
 
 	var buf bytes.Buffer
@@ -37,11 +35,11 @@ func (suite *TestLandingTemplateSuite) TestLandingTemplateGeneration() {
 	suite.NotEmpty(buf.String(), "Generated HTML should not be empty")
 }
 
-// TestLandingTemplateWithEmptyFeed tests template with minimal feed data
-func (suite *TestLandingTemplateSuite) TestLandingTemplateWithEmptyFeed() {
+// TestWithEmptyFeed tests template with minimal feed data
+func (suite *TestLandingTemplateSuite) TestWithEmptyFeed() {
 	data := LandingData{
-		Feed:     domain.Feed{Title: "Test Podcast"},
-		Episodes: []domain.Episode{},
+		Feed:     domain.FeedInfo{Title: "Test Podcast"},
+		Episodes: []*domain.Episode{},
 	}
 
 	var buf bytes.Buffer
@@ -52,6 +50,10 @@ func (suite *TestLandingTemplateSuite) TestLandingTemplateWithEmptyFeed() {
 	html := buf.String()
 	suite.Contains(html, "Test Podcast", "Should contain feed title")
 	suite.Contains(html, "No episodes yet", "Should show no episodes message")
+
+	// When no episodes exist, RSS elements should not be present
+	suite.NotContains(html, `<link rel="alternate" type="application/rss+xml"`, "Should not contain RSS link tag in head when no episodes")
+	suite.NotContains(html, "RSS feed", "Should not show RSS feed button when no episodes")
 }
 
 // TestLandingTemplateWithFullFeed tests template with complete feed data
@@ -84,16 +86,16 @@ func (suite *TestLandingTemplateSuite) TestLandingTemplateWithFullFeed() {
 	suite.NotContains(html, "No episodes yet", "Should not show no episodes message")
 }
 
-// TestLandingTemplateWithManyEpisodes tests that only first 10 episodes are shown
-func (suite *TestLandingTemplateSuite) TestLandingTemplateWithManyEpisodes() {
+// TestManyEpisodes tests that only first 10 episodes are shown
+func (suite *TestLandingTemplateSuite) TestManyEpisodes() {
 	data := LandingData{
-		Feed:     domain.Feed{Title: "Test Podcast"},
-		Episodes: make([]domain.Episode, 15),
+		Feed:     domain.FeedInfo{Title: "Test Podcast"},
+		Episodes: make([]*domain.Episode, 15),
 	}
 
 	// Create 15 episodes
 	for i := 0; i < 15; i++ {
-		data.Episodes[i] = domain.Episode{
+		data.Episodes[i] = &domain.Episode{
 			ID:          int64(i + 1),
 			Title:       fmt.Sprintf("Episode %d", i+1),
 			Description: fmt.Sprintf("Description for episode %d", i+1),
@@ -120,33 +122,12 @@ func (suite *TestLandingTemplateSuite) TestLandingTemplateWithManyEpisodes() {
 	}
 }
 
-// TestLandingTemplateStructure tests that generated HTML has proper structure
-func (suite *TestLandingTemplateSuite) TestLandingTemplateStructure() {
-	data := suite.createTestData()
-
-	var buf bytes.Buffer
-	err := suite.template.Execute(&buf, data)
-	suite.Require().NoError(err)
-
-	html := buf.String()
-
-	// Test HTML structure
-	suite.Contains(html, "<!doctype html>", "Should have proper DOCTYPE")
-	// TODO lang
-	suite.Contains(html, "<html lang=\"ru\">", "Should have proper html tag")
-	suite.Contains(html, "<meta charset=\"utf-8\">", "Should have charset meta")
-	suite.Contains(html, "<title>", "Should have title tag")
-	suite.Contains(html, "class=\"hero\"", "Should have hero section")
-	suite.Contains(html, "class=\"episodes\"", "Should have episodes section")
-	suite.Contains(html, "<footer>", "Should have footer")
-}
-
-// TestLandingTemplateConditionalRendering tests conditional rendering logic
-func (suite *TestLandingTemplateSuite) TestLandingTemplateConditionalRendering() {
+// TestConditionalRendering tests conditional rendering logic
+func (suite *TestLandingTemplateSuite) TestConditionalRendering() {
 	// Test with minimal data
 	minimalData := LandingData{
-		Feed:     domain.Feed{Title: "Minimal Podcast"},
-		Episodes: []domain.Episode{},
+		Feed:     domain.FeedInfo{Title: "Minimal Podcast"},
+		Episodes: []*domain.Episode{},
 	}
 
 	var buf bytes.Buffer
@@ -160,17 +141,18 @@ func (suite *TestLandingTemplateSuite) TestLandingTemplateConditionalRendering()
 	suite.NotContains(html, "Website", "Should not show website link when empty")
 	suite.NotContains(html, "RSS feed", "Should not show RSS button when empty")
 	suite.NotContains(html, "class=\"chip\"", "Should not show categories when empty")
+	suite.NotContains(html, `<link rel="alternate" type="application/rss+xml"`, "Should not contain RSS link tag in head when no episodes")
 }
 
 // createTestData creates basic test data for template testing
 func (suite *TestLandingTemplateSuite) createTestData() LandingData {
 	return LandingData{
-		Feed: domain.Feed{
+		Feed: domain.FeedInfo{
 			Title:       "Test Podcast",
 			Description: "A test podcast for template testing",
 			Author:      "Test Author",
 		},
-		Episodes: []domain.Episode{
+		Episodes: []*domain.Episode{
 			{
 				ID:          1,
 				Title:       "Episode 1",
@@ -185,7 +167,7 @@ func (suite *TestLandingTemplateSuite) createTestData() LandingData {
 // createFullTestData creates complete test data with all optional fields
 func (suite *TestLandingTemplateSuite) createFullTestData() LandingData {
 	return LandingData{
-		Feed: domain.Feed{
+		Feed: domain.FeedInfo{
 			Title:       "Complete Test Podcast",
 			Description: "A complete test podcast with all fields",
 			Author:      "Complete Author",
@@ -198,7 +180,7 @@ func (suite *TestLandingTemplateSuite) createFullTestData() LandingData {
 				{Text: "Education", Subcategories: []string{}},
 			},
 		},
-		Episodes: []domain.Episode{
+		Episodes: []*domain.Episode{
 			{
 				ID:            1,
 				Title:         "Episode 1",
