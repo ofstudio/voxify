@@ -1,42 +1,18 @@
 package domain
 
-import (
-	"errors"
-)
+import "errors"
 
+// Domain errors
 var (
-	// Business logic errors
-
-	ErrDownloadPlatform    = NewError(101, "no matching platform found")
-	ErrDownloadFailed      = NewError(102, "failed to download episode")
-	ErrDownloadInProgress  = NewError(103, "episode already in progress")
-	ErrDownloadExists      = NewError(104, "episode already exists")
-	ErrDownloadInterrupted = NewError(105, "episode download interrupted")
-	ErrDownloadBusy        = NewError(106, "downloader is busy")
-	ErrDownloadUrl         = NewError(107, "invalid download URL")
-	ErrDownloadFormat      = NewError(108, "unsupported download format")
-	ErrDownloadQuality     = NewError(109, "unsupported download quality")
-
-	// Store errors
-
-	ErrStoreBegin      = NewError(201, "failed to begin transaction")
-	ErrStoreCommit     = NewError(202, "failed to commit transaction")
-	ErrStoreRollback   = NewError(203, "failed to rollback transaction")
-	ErrEpisodeCreate   = NewError(204, "failed to create episode")
-	ErrEpisodeGet      = NewError(205, "failed to get episodes")
-	ErrEpisodeCount    = NewError(206, "failed to count episodes")
-	ErrEpisodeGetByUrl = NewError(207, "failed to get episode by URL")
-
-	// I/O errors
-
-	ErrFeedSave = NewError(301, "failed to save feed to file")
+	ErrBuildFeedFailed     = errors.New("failed to build feed")
+	ErrBuildLandingFailed  = errors.New("failed to build landing page")
+	ErrDownloadFailed      = errors.New("failed to download episode")
+	ErrDownloadInProgress  = errors.New("episode already in progress")
+	ErrDownloadExists      = errors.New("episode already exists")
+	ErrDownloadInterrupted = errors.New("episode download interrupted")
+	ErrDownloadBusy        = errors.New("downloader is busy")
+	ErrDownloadPlatform    = errors.New("no matching platform found")
+	ErrDownloadUrl         = errors.New("invalid download URL")
+	ErrDownloadFormat      = errors.New("unsupported download format")
+	ErrDownloadQuality     = errors.New("unsupported download quality")
 )
-
-type Error = struct {
-	Code int
-	error
-}
-
-func NewError(code int, msg string) Error {
-	return Error{Code: code, error: errors.New(msg)}
-}
