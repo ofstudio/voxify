@@ -94,7 +94,7 @@ func (s *EpisodeService) Download(ctx context.Context, req domain.DownloadReques
 
 	// Save Episode to store
 	if err = s.store.EpisodeCreate(ctx, episode); err != nil {
-		return nil, fmt.Errorf("%w: %w", domain.ErrEpisodeCreate, err)
+		return nil, fmt.Errorf("failed to create episode: %w", err)
 	}
 
 	s.log.Info("[episode service] episode downloaded",
@@ -126,7 +126,7 @@ func (s *EpisodeService) validateRequest(ctx context.Context, req domain.Downloa
 	//check if episode already exists
 	existing, err := s.store.EpisodeGetByUrl(ctx, req.Url)
 	if err != nil {
-		return fmt.Errorf("%w: %w", domain.ErrEpisodeGetByUrl, err)
+		return fmt.Errorf("failed to get existing episodes: %w", err)
 	}
 	if len(existing) > 0 {
 		return domain.ErrDownloadExists

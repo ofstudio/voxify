@@ -228,7 +228,7 @@ func (suite *TestEpisodeServiceSuite) TestValidate() {
 
 		// Assert
 		suite.Error(err)
-		suite.True(errors.Is(err, domain.ErrEpisodeGetByUrl))
+		suite.True(errors.Is(err, storeErr))
 		suite.Contains(err.Error(), storeErr.Error())
 	})
 }
@@ -337,7 +337,7 @@ func (suite *TestEpisodeServiceSuite) TestDownload() {
 		// Assert
 		suite.Error(err)
 		suite.Nil(result)
-		suite.True(errors.Is(err, domain.ErrEpisodeCreate))
+		suite.True(errors.Is(err, storeErr))
 		suite.Contains(err.Error(), storeErr.Error())
 	})
 
@@ -386,7 +386,7 @@ func (suite *TestEpisodeServiceSuite) TestDownload() {
 		// Assert
 		suite.Error(err)
 		suite.Nil(result)
-		suite.True(errors.Is(err, domain.ErrEpisodeGetByUrl))
+		suite.True(errors.Is(err, storeErr))
 		suite.Contains(err.Error(), storeErr.Error())
 	})
 }
@@ -521,7 +521,7 @@ func (suite *TestEpisodeServiceSuite) TestValidateRequest() {
 		suite.mockStore.On("EpisodeGetByUrl", suite.ctx, req.Url).Return(nil, storeErr)
 		err := suite.service.validateRequest(suite.ctx, req)
 		suite.Error(err)
-		suite.True(errors.Is(err, domain.ErrEpisodeGetByUrl))
+		suite.True(errors.Is(err, storeErr))
 		suite.Contains(err.Error(), storeErr.Error())
 	})
 }
