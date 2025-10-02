@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"testing"
+	"time"
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
@@ -109,6 +110,40 @@ func (suite *TestTelegramHandlersSuite) TestNewTelegramHandlers() {
 	suite.Equal(suite.bot, handlers.bot)
 }
 
+// New test: Start
+func (suite *TestTelegramHandlersSuite) TestStart() {
+	suite.Run("RegistersHandlersAndStartsBot", func() {
+		// Arrange: expect RegisterHandler calls for start, build, info and url
+		suite.bot.EXPECT().RegisterHandler(bot.HandlerTypeMessageText, "start", bot.MatchTypeCommandStartOnly, mock.Anything).Return("r_start")
+		suite.bot.EXPECT().RegisterHandler(bot.HandlerTypeMessageText, "build", bot.MatchTypeCommand, mock.Anything).Return("r_build")
+		suite.bot.EXPECT().RegisterHandler(bot.HandlerTypeMessageText, "info", bot.MatchTypeCommand, mock.Anything).Return("r_info")
+		suite.bot.EXPECT().RegisterHandler(bot.HandlerTypeMessageText, "https://", bot.MatchTypePrefix, mock.Anything).Return("r_url")
+
+		// Expect Start to be called; signal via channel when it is.
+		called := make(chan struct{}, 1)
+		suite.bot.EXPECT().Start(mock.Anything).Run(func(ctx context.Context) {
+			// Notify that Start was invoked
+			select {
+			case called <- struct{}{}:
+			default:
+			}
+		}).Return()
+
+		// Act
+		err := suite.handlers.Start(suite.ctx)
+
+		// Assert
+		suite.NoError(err)
+
+		select {
+		case <-called:
+			// Start was called as expected
+		case <-time.After(time.Second):
+			suite.Fail("expected bot.Start to be called")
+		}
+	})
+}
+
 // Test ErrorsHandler method
 
 func (suite *TestTelegramHandlersSuite) TestErrorsHandler() {
@@ -126,7 +161,7 @@ func (suite *TestTelegramHandlersSuite) TestErrorsHandler() {
 	})
 }
 
-// Test CmdStartHandler method
+// Test cmdStartHandler method
 
 func (suite *TestTelegramHandlersSuite) TestHandleStart() {
 	suite.Run("SendsWelcomeMessage", func() {
@@ -142,7 +177,7 @@ func (suite *TestTelegramHandlersSuite) TestHandleStart() {
 			Return(&models.Message{}, nil)
 
 		// Act
-		handler := suite.handlers.CmdStartHandler()
+		handler := suite.handlers.cmdStartHandler()
 		handler(suite.ctx, suite.api, update)
 
 		// Assert
@@ -154,7 +189,7 @@ func (suite *TestTelegramHandlersSuite) TestHandleStart() {
 		update := &models.Update{Message: nil}
 
 		// Act - should not panic and should not call api methods
-		handler := suite.handlers.CmdStartHandler()
+		handler := suite.handlers.cmdStartHandler()
 		handler(suite.ctx, suite.api, update)
 
 		// Assert - no api methods should be called
@@ -173,7 +208,7 @@ func (suite *TestTelegramHandlersSuite) TestHandleStart() {
 			Return(nil, domain.ErrDownloadFailed)
 
 		// Act - should not panic even if SendMessage fails
-		handler := suite.handlers.CmdStartHandler()
+		handler := suite.handlers.cmdStartHandler()
 		suite.NotPanics(func() {
 			handler(suite.ctx, suite.api, update)
 		})
@@ -183,7 +218,7 @@ func (suite *TestTelegramHandlersSuite) TestHandleStart() {
 	})
 }
 
-// Test CmdBuildHandler method
+// Test cmdBuildHandler method
 
 func (suite *TestTelegramHandlersSuite) TestHandleBuild() {
 	suite.Run("PublishesBuildRequestEvent", func() {
@@ -199,7 +234,7 @@ func (suite *TestTelegramHandlersSuite) TestHandleBuild() {
 		suite.bus.EXPECT().Publish(suite.matchBuildRequestEvent(expectedSource)).Return()
 
 		// Act
-		handler := suite.handlers.CmdBuildHandler()
+		handler := suite.handlers.cmdBuildHandler()
 		handler(suite.ctx, suite.api, update)
 
 		// Assert
@@ -211,14 +246,14 @@ func (suite *TestTelegramHandlersSuite) TestHandleBuild() {
 		update := &models.Update{Message: nil}
 
 		// Act - should not panic and should not publish events
-		handler := suite.handlers.CmdBuildHandler()
+		handler := suite.handlers.cmdBuildHandler()
 		handler(suite.ctx, suite.api, update)
 
 		// Assert - no events should be published
 	})
 }
 
-// Test UrlHandler method
+// Test urlHandler method
 
 func (suite *TestTelegramHandlersSuite) TestHandleUrl() {
 	suite.Run("PublishesDownloadRequestEvent", func() {
@@ -234,7 +269,7 @@ func (suite *TestTelegramHandlersSuite) TestHandleUrl() {
 		suite.bus.EXPECT().Publish(suite.matchDownloadRequestEvent(expectedSource, update.Message.Text)).Return()
 
 		// Act
-		handler := suite.handlers.UrlHandler()
+		handler := suite.handlers.urlHandler()
 		handler(suite.ctx, suite.api, update)
 
 		// Assert
@@ -246,7 +281,7 @@ func (suite *TestTelegramHandlersSuite) TestHandleUrl() {
 		update := &models.Update{Message: nil}
 
 		// Act - should not panic and should not publish events
-		handler := suite.handlers.UrlHandler()
+		handler := suite.handlers.urlHandler()
 		handler(suite.ctx, suite.api, update)
 
 		// Assert - no events should be published
@@ -258,7 +293,7 @@ func (suite *TestTelegramHandlersSuite) TestHandleUrl() {
 		update := suite.createUpdate(message)
 
 		// Act - should not panic and should not publish events
-		handler := suite.handlers.UrlHandler()
+		handler := suite.handlers.urlHandler()
 		handler(suite.ctx, suite.api, update)
 
 		// Assert - no events should be published

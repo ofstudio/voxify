@@ -24,6 +24,26 @@ func NewTelegramHandlers(log *slog.Logger, bus domain.EventBus, bot telegram.Bot
 	return &TelegramHandlers{log: log, bus: bus, bot: bot}
 }
 
+// Start initializes handlers and starts the Telegram bot.
+func (h *TelegramHandlers) Start(ctx context.Context) error {
+	h.log.Info("[telegram handlers] starting bot")
+
+	// Register handlers
+	h.bot.RegisterHandler(bot.HandlerTypeMessageText, "start", bot.MatchTypeCommandStartOnly, h.cmdStartHandler())
+	h.bot.RegisterHandler(bot.HandlerTypeMessageText, "build", bot.MatchTypeCommand, h.cmdBuildHandler())
+	h.bot.RegisterHandler(bot.HandlerTypeMessageText, "info", bot.MatchTypeCommand, h.cmdInfoHandler())
+	h.bot.RegisterHandler(bot.HandlerTypeMessageText, "https://", bot.MatchTypePrefix, h.urlHandler())
+
+	//start the bot
+	go func() {
+		h.bot.Start(ctx)
+		h.log.Info("[telegram handlers] bot stopped")
+	}()
+
+	h.log.Info("[telegram handlers] started")
+	return nil
+}
+
 // ErrorsHandler handles errors from the Telegram bot.
 func (h *TelegramHandlers) ErrorsHandler() bot.ErrorsHandler {
 	return func(err error) {
@@ -31,8 +51,8 @@ func (h *TelegramHandlers) ErrorsHandler() bot.ErrorsHandler {
 	}
 }
 
-// CmdStartHandler handles the /start command.
-func (h *TelegramHandlers) CmdStartHandler() telegram.HandlerFunc {
+// cmdStartHandler handles the /start command.
+func (h *TelegramHandlers) cmdStartHandler() telegram.HandlerFunc {
 	return func(ctx context.Context, api telegram.API, update *models.Update) {
 		if update.Message == nil {
 			return
@@ -49,8 +69,8 @@ func (h *TelegramHandlers) CmdStartHandler() telegram.HandlerFunc {
 	}
 }
 
-// CmdBuildHandler handles the /build command.
-func (h *TelegramHandlers) CmdBuildHandler() telegram.HandlerFunc {
+// cmdBuildHandler handles the /build command.
+func (h *TelegramHandlers) cmdBuildHandler() telegram.HandlerFunc {
 	return func(ctx context.Context, api telegram.API, update *models.Update) {
 		if update.Message == nil {
 			return
@@ -67,8 +87,8 @@ func (h *TelegramHandlers) CmdBuildHandler() telegram.HandlerFunc {
 	}
 }
 
-// CmdInfoHandler handles the /info command.
-func (h *TelegramHandlers) CmdInfoHandler() telegram.HandlerFunc {
+// cmdInfoHandler handles the /info command.
+func (h *TelegramHandlers) cmdInfoHandler() telegram.HandlerFunc {
 	return func(ctx context.Context, api telegram.API, update *models.Update) {
 		if update.Message == nil {
 			return
@@ -84,8 +104,8 @@ func (h *TelegramHandlers) CmdInfoHandler() telegram.HandlerFunc {
 	}
 }
 
-// UrlHandler handles messages containing URLs.
-func (h *TelegramHandlers) UrlHandler() telegram.HandlerFunc {
+// urlHandler handles messages containing URLs.
+func (h *TelegramHandlers) urlHandler() telegram.HandlerFunc {
 	return func(ctx context.Context, api telegram.API, update *models.Update) {
 		if update.Message == nil || update.Message.Text == "" {
 			return
