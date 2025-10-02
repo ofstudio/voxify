@@ -42,11 +42,14 @@ func (h *EventHandlers) Start(ctx context.Context) {
 	// subscribe to events
 	h.bus.Subscribe(domain.DownloadRequestEvent, h.downloadHandler(ctx))
 	h.bus.Subscribe(domain.BuildRequestEvent, h.buildHandler(ctx))
+	h.bus.Subscribe(domain.FeedInfoRequestEvent, h.feedInfoHandler(ctx))
 	// logging handlers
 	h.bus.Subscribe(domain.DownloadRequestEvent, h.logDownloadRequestHandler)
 	h.bus.Subscribe(domain.DownloadResponseEvent, h.logDownloadResponseHandler)
 	h.bus.Subscribe(domain.BuildRequestEvent, h.logBuildRequestHandler)
 	h.bus.Subscribe(domain.BuildResponseEvent, h.logBuildResponseHandler)
+	h.bus.Subscribe(domain.FeedInfoRequestEvent, h.logFeedInfoRequestHandler)
+	h.bus.Subscribe(domain.FeedInfoResponseEvent, h.logFeedInfoResponseHandler)
 
 	// start workers
 	for i := 0; i < h.cfg.DownloadWorkers; i++ {
@@ -150,6 +153,27 @@ func (h *EventHandlers) buildHandler(ctx context.Context) domain.EventHandler {
 	}
 }
 
+// feedInfoHandler returns event handler for handling feed info requests.
+func (h *EventHandlers) feedInfoHandler(ctx context.Context) domain.EventHandler {
+	return func(event domain.Event) {
+		req := event.Payload().(domain.FeedInfoRequest)
+		info, err := h.builder.Info(ctx)
+		if err != nil {
+			h.bus.Publish(domain.NewFeedInfoResponseEvent(domain.FeedInfoResponse{
+				Status:  domain.StatusFailed,
+				Error:   err,
+				Request: req,
+			}))
+			return
+		}
+		h.bus.Publish(domain.NewFeedInfoResponseEvent(domain.FeedInfoResponse{
+			Status:   domain.StatusSuccess,
+			FeedInfo: info,
+			Request:  req,
+		}))
+	}
+}
+
 // failRequest publishes a failed response event based on the request type.
 func (h *EventHandlers) failRequest(req any, err error) {
 	var event domain.Event
@@ -197,4 +221,16 @@ func (h *EventHandlers) logBuildRequestHandler(event domain.Event) {
 func (h *EventHandlers) logBuildResponseHandler(event domain.Event) {
 	resp := event.Payload().(domain.BuildResponse)
 	h.log.Info("[event handlers] build response", "response", resp)
+}
+
+// logFeedInfoRequestHandler logs feed info request events.
+func (h *EventHandlers) logFeedInfoRequestHandler(event domain.Event) {
+	req := event.Payload().(domain.FeedInfoRequest)
+	h.log.Info("[event handlers] feed info request", "request", req)
+}
+
+// logFeedInfoResponseHandler logs feed info response events.
+func (h *EventHandlers) logFeedInfoResponseHandler(event domain.Event) {
+	resp := event.Payload().(domain.FeedInfoResponse)
+	h.log.Info("[event handlers] feed info response", "response", resp)
 }

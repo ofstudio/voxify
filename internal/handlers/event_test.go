@@ -18,6 +18,11 @@ import (
 	"github.com/ofstudio/voxify/internal/mocks"
 )
 
+// TestEventHandlers is the entry point for running the test suite
+func TestEventHandlers(t *testing.T) {
+	suite.Run(t, new(TestEventHandlersSuite))
+}
+
 // TestEventHandlersSuite is a test suite for EventHandlers
 type TestEventHandlersSuite struct {
 	suite.Suite
@@ -144,10 +149,13 @@ func (suite *TestEventHandlersSuite) TestStart() {
 		// Expect all event subscriptions with correct EventType constants (cast to domain.EventType)
 		suite.bus.EXPECT().Subscribe(domain.DownloadRequestEvent, mock.AnythingOfType("domain.EventHandler")).Return()
 		suite.bus.EXPECT().Subscribe(domain.BuildRequestEvent, mock.AnythingOfType("domain.EventHandler")).Return()
+		suite.bus.EXPECT().Subscribe(domain.FeedInfoRequestEvent, mock.AnythingOfType("domain.EventHandler")).Return()
 		suite.bus.EXPECT().Subscribe(domain.DownloadRequestEvent, mock.AnythingOfType("domain.EventHandler")).Return()
 		suite.bus.EXPECT().Subscribe(domain.DownloadResponseEvent, mock.AnythingOfType("domain.EventHandler")).Return()
 		suite.bus.EXPECT().Subscribe(domain.BuildRequestEvent, mock.AnythingOfType("domain.EventHandler")).Return()
 		suite.bus.EXPECT().Subscribe(domain.BuildResponseEvent, mock.AnythingOfType("domain.EventHandler")).Return()
+		suite.bus.EXPECT().Subscribe(domain.FeedInfoRequestEvent, mock.AnythingOfType("domain.EventHandler")).Return()
+		suite.bus.EXPECT().Subscribe(domain.FeedInfoResponseEvent, mock.AnythingOfType("domain.EventHandler")).Return()
 
 		// Act
 		suite.handlers.Start(ctx)
@@ -192,7 +200,7 @@ func (suite *TestEventHandlersSuite) TestStart() {
 		)
 
 		// Mock all subscriptions
-		suite.bus.EXPECT().Subscribe(mock.Anything, mock.Anything).Return().Times(6)
+		suite.bus.EXPECT().Subscribe(mock.Anything, mock.Anything).Return().Times(9)
 
 		// Act
 		handlers.Start(ctx)
@@ -647,11 +655,41 @@ func (suite *TestEventHandlersSuite) TestLoggingHandlers() {
 			suite.handlers.logBuildResponseHandler(event)
 		})
 	})
-}
 
-// TestEventHandlers is the entry point for running the test suite
-func TestEventHandlers(t *testing.T) {
-	suite.Run(t, new(TestEventHandlersSuite))
+	suite.Run("LogFeedInfoRequestHandler", func() {
+		// Arrange
+		// create a feed info request and event
+		req := domain.FeedInfoRequest{
+			ID: "fi-1",
+			Source: domain.RequestSource{
+				UserID:    123,
+				ChatID:    456,
+				MessageID: 1,
+			},
+		}
+		event := domain.NewFeedInfoRequestEvent(req)
+
+		// Act - should not panic
+		suite.NotPanics(func() {
+			suite.handlers.logFeedInfoRequestHandler(event)
+		})
+	})
+
+	suite.Run("LogFeedInfoResponseHandler", func() {
+		// Arrange
+		req := domain.FeedInfoRequest{ID: "fi-1", Source: domain.RequestSource{UserID: 123}}
+		resp := domain.FeedInfoResponse{
+			Status:   domain.StatusSuccess,
+			FeedInfo: &domain.FeedInfo{Title: "Test Feed"},
+			Request:  req,
+		}
+		event := domain.NewFeedInfoResponseEvent(resp)
+
+		// Act - should not panic
+		suite.NotPanics(func() {
+			suite.handlers.logFeedInfoResponseHandler(event)
+		})
+	})
 }
 
 // Helper matchers for mock expectations
