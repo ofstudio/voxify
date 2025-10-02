@@ -6,9 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ofstudio/voxify/internal/domain"
 	"github.com/stretchr/testify/suite"
-
-	"github.com/ofstudio/voxify/internal/entities"
 )
 
 // TestTemplateFunctionsSuite defines the test suite for template functions
