@@ -30,7 +30,7 @@ func (a *adapter) wrapMiddlewares(m ...Middleware) []bot.Middleware {
 	bm := make([]bot.Middleware, 0, len(m))
 	for _, mw := range m {
 		bm = append(bm, func(next bot.HandlerFunc) bot.HandlerFunc {
-			return a.wrapHandler(mw(func(ctx context.Context, b Bot, update *models.Update) {
+			return a.wrapHandler(mw(func(ctx context.Context, api API, update *models.Update) {
 				next(ctx, a.b, update)
 			}))
 		})

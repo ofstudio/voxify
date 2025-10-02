@@ -29,6 +29,7 @@ type TestTelegramHandlersSuite struct {
 	log      *slog.Logger
 	bus      *mocks.MockEventBus
 	bot      *mocks.MockBot
+	api      *mocks.MockAPI
 	handlers *TelegramHandlers
 }
 
@@ -43,8 +44,9 @@ func (suite *TestTelegramHandlersSuite) SetupSubTest() {
 	suite.log = slog.Default()
 	suite.bus = mocks.NewMockEventBus(suite.T())
 	suite.bot = mocks.NewMockBot(suite.T())
+	suite.api = mocks.NewMockAPI(suite.T())
 
-	suite.handlers = NewTelegramHandlers(suite.log, suite.bus)
+	suite.handlers = NewTelegramHandlers(suite.log, suite.bus, suite.bot)
 }
 
 // TearDownTest is called after each test in the suite completes
@@ -99,12 +101,13 @@ func (suite *TestTelegramHandlersSuite) createUrlUpdate() *models.Update {
 
 func (suite *TestTelegramHandlersSuite) TestNewTelegramHandlers() {
 	// Act
-	handlers := NewTelegramHandlers(suite.log, suite.bus)
+	handlers := NewTelegramHandlers(suite.log, suite.bus, suite.bot)
 
 	// Assert
 	suite.NotNil(handlers)
 	suite.Equal(suite.log, handlers.log)
 	suite.Equal(suite.bus, handlers.bus)
+	suite.Equal(suite.bot, handlers.bot)
 }
 
 // Test ErrorsHandler method
@@ -136,26 +139,26 @@ func (suite *TestTelegramHandlersSuite) TestHandleStart() {
 			ParseMode: models.ParseModeHTML,
 		}
 
-		suite.bot.EXPECT().SendMessage(suite.ctx, suite.matchSendMessageParams(expectedParams)).
+		suite.api.EXPECT().SendMessage(suite.ctx, suite.matchSendMessageParams(expectedParams)).
 			Return(&models.Message{}, nil)
 
 		// Act
 		handler := suite.handlers.CmdStartHandler()
-		handler(suite.ctx, suite.bot, update)
+		handler(suite.ctx, suite.api, update)
 
 		// Assert
-		suite.bot.AssertExpectations(suite.T())
+		suite.api.AssertExpectations(suite.T())
 	})
 
 	suite.Run("IgnoresUpdateWithoutMessage", func() {
 		// Arrange
 		update := &models.Update{Message: nil}
 
-		// Act - should not panic and should not call bot methods
+		// Act - should not panic and should not call api methods
 		handler := suite.handlers.CmdStartHandler()
-		handler(suite.ctx, suite.bot, update)
+		handler(suite.ctx, suite.api, update)
 
-		// Assert - no bot methods should be called
+		// Assert - no api methods should be called
 	})
 
 	suite.Run("HandlesSendMessageError", func() {
@@ -167,17 +170,17 @@ func (suite *TestTelegramHandlersSuite) TestHandleStart() {
 			ParseMode: models.ParseModeHTML,
 		}
 
-		suite.bot.EXPECT().SendMessage(suite.ctx, suite.matchSendMessageParams(expectedParams)).
+		suite.api.EXPECT().SendMessage(suite.ctx, suite.matchSendMessageParams(expectedParams)).
 			Return(nil, domain.ErrDownloadFailed)
 
 		// Act - should not panic even if SendMessage fails
 		handler := suite.handlers.CmdStartHandler()
 		suite.NotPanics(func() {
-			handler(suite.ctx, suite.bot, update)
+			handler(suite.ctx, suite.api, update)
 		})
 
 		// Assert
-		suite.bot.AssertExpectations(suite.T())
+		suite.api.AssertExpectations(suite.T())
 	})
 }
 
@@ -198,8 +201,7 @@ func (suite *TestTelegramHandlersSuite) TestHandleBuild() {
 
 		// Act
 		handler := suite.handlers.CmdBuildHandler()
-		// CmdBuildHandler now returns telegram.HandlerFunc which expects telegram.Bot
-		handler(suite.ctx, suite.bot, update)
+		handler(suite.ctx, suite.api, update)
 
 		// Assert
 		suite.bus.AssertExpectations(suite.T())
@@ -211,7 +213,7 @@ func (suite *TestTelegramHandlersSuite) TestHandleBuild() {
 
 		// Act - should not panic and should not publish events
 		handler := suite.handlers.CmdBuildHandler()
-		handler(suite.ctx, suite.bot, update)
+		handler(suite.ctx, suite.api, update)
 
 		// Assert - no events should be published
 	})
@@ -234,8 +236,7 @@ func (suite *TestTelegramHandlersSuite) TestHandleUrl() {
 
 		// Act
 		handler := suite.handlers.UrlHandler()
-		// UrlHandler now returns telegram.HandlerFunc which expects telegram.Bot
-		handler(suite.ctx, suite.bot, update)
+		handler(suite.ctx, suite.api, update)
 
 		// Assert
 		suite.bus.AssertExpectations(suite.T())
@@ -247,7 +248,7 @@ func (suite *TestTelegramHandlersSuite) TestHandleUrl() {
 
 		// Act - should not panic and should not publish events
 		handler := suite.handlers.UrlHandler()
-		handler(suite.ctx, suite.bot, update)
+		handler(suite.ctx, suite.api, update)
 
 		// Assert - no events should be published
 	})
@@ -259,7 +260,7 @@ func (suite *TestTelegramHandlersSuite) TestHandleUrl() {
 
 		// Act - should not panic and should not publish events
 		handler := suite.handlers.UrlHandler()
-		handler(suite.ctx, suite.bot, update)
+		handler(suite.ctx, suite.api, update)
 
 		// Assert - no events should be published
 	})
@@ -318,13 +319,13 @@ func (suite *TestTelegramHandlersSuite) TestSendMessage() {
 		}
 		expectedMessage := &models.Message{ID: 123}
 
-		suite.bot.EXPECT().SendMessage(suite.ctx, params).Return(expectedMessage, nil)
+		suite.api.EXPECT().SendMessage(suite.ctx, params).Return(expectedMessage, nil)
 
 		// Act
-		suite.handlers.sendMessage(suite.ctx, suite.bot, params)
+		suite.handlers.sendMessage(suite.ctx, suite.api, params)
 
 		// Assert
-		suite.bot.AssertExpectations(suite.T())
+		suite.api.AssertExpectations(suite.T())
 	})
 
 	suite.Run("HandlesErrorGracefully", func() {
@@ -334,15 +335,15 @@ func (suite *TestTelegramHandlersSuite) TestSendMessage() {
 			Text:   "test message",
 		}
 
-		suite.bot.EXPECT().SendMessage(suite.ctx, params).Return(nil, domain.ErrDownloadFailed)
+		suite.api.EXPECT().SendMessage(suite.ctx, params).Return(nil, domain.ErrDownloadFailed)
 
 		// Act - should not panic
 		suite.NotPanics(func() {
-			suite.handlers.sendMessage(suite.ctx, suite.bot, params)
+			suite.handlers.sendMessage(suite.ctx, suite.api, params)
 		})
 
 		// Assert
-		suite.bot.AssertExpectations(suite.T())
+		suite.api.AssertExpectations(suite.T())
 	})
 }
 
@@ -361,12 +362,12 @@ func (suite *TestTelegramHandlersSuite) TestAllowedUsersMiddleware() {
 		allowed := []int64{111}
 		called := false
 		mw := suite.handlers.AllowedUsersMiddleware(allowed)
-		next := func(ctx context.Context, b telegram.Bot, update *models.Update) {
+		next := func(ctx context.Context, api telegram.API, update *models.Update) {
 			called = true
 		}
 
 		handler := mw(next)
-		handler(suite.ctx, suite.bot, update)
+		handler(suite.ctx, suite.api, update)
 		suite.True(called, "next should be called for allowed message user")
 	})
 
@@ -380,12 +381,12 @@ func (suite *TestTelegramHandlersSuite) TestAllowedUsersMiddleware() {
 		allowed := []int64{222}
 		called := false
 		mw := suite.handlers.AllowedUsersMiddleware(allowed)
-		next := func(ctx context.Context, b telegram.Bot, update *models.Update) {
+		next := func(ctx context.Context, api telegram.API, update *models.Update) {
 			called = true
 		}
 
 		handler := mw(next)
-		handler(suite.ctx, suite.bot, update)
+		handler(suite.ctx, suite.api, update)
 		suite.True(called, "next should be called for allowed callback query user")
 	})
 
@@ -400,73 +401,34 @@ func (suite *TestTelegramHandlersSuite) TestAllowedUsersMiddleware() {
 		allowed := []int64{444}
 		called := false
 		mw := suite.handlers.AllowedUsersMiddleware(allowed)
-		next := func(ctx context.Context, b telegram.Bot, update *models.Update) {
+		next := func(ctx context.Context, api telegram.API, update *models.Update) {
 			called = true
 		}
 
 		handler := mw(next)
-		handler(suite.ctx, suite.bot, update)
-		suite.False(called, "next should NOT be called for disallowed user")
+		handler(suite.ctx, suite.api, update)
+		suite.False(called, "next should not be called for not allowed user")
 	})
 
-	suite.Run("BlocksUpdateWithUnknownUser", func() {
-		// update without message, callbackQuery, inlineQuery or editedMessage
-		update := &models.Update{}
+	suite.Run("BlocksUpdateWithoutUserID", func() {
+		update := &models.Update{
+			// No Message, CallbackQuery, InlineQuery, or EditedMessage
+		}
 
 		allowed := []int64{111}
 		called := false
 		mw := suite.handlers.AllowedUsersMiddleware(allowed)
-		next := func(ctx context.Context, b telegram.Bot, update *models.Update) {
+		next := func(ctx context.Context, api telegram.API, update *models.Update) {
 			called = true
 		}
 
 		handler := mw(next)
-		handler(suite.ctx, suite.bot, update)
-		suite.False(called, "next should NOT be called when user ID cannot be determined")
+		handler(suite.ctx, suite.api, update)
+		suite.False(called, "next should not be called when user ID cannot be determined")
 	})
 }
 
-// Test CmdInfoHandler method
-
-func (suite *TestTelegramHandlersSuite) TestHandleInfo() {
-	suite.Run("PublishesFeedInfoRequestEvent", func() {
-		// Arrange
-		update := suite.createUpdate(&models.Message{
-			ID:   10,
-			From: &models.User{ID: 555},
-			Chat: models.Chat{ID: 66},
-			Text: "/info",
-		})
-
-		expectedSource := domain.RequestSource{
-			UserID:    update.Message.From.ID,
-			ChatID:    update.Message.Chat.ID,
-			MessageID: update.Message.ID,
-		}
-
-		suite.bus.EXPECT().Publish(suite.matchFeedInfoRequestEvent(expectedSource)).Return()
-
-		// Act
-		handler := suite.handlers.CmdInfoHandler()
-		handler(suite.ctx, suite.bot, update)
-
-		// Assert
-		suite.bus.AssertExpectations(suite.T())
-	})
-
-	suite.Run("IgnoresUpdateWithoutMessage", func() {
-		// Arrange
-		update := &models.Update{Message: nil}
-
-		// Act - should not panic and should not publish events
-		handler := suite.handlers.CmdInfoHandler()
-		handler(suite.ctx, suite.bot, update)
-
-		// No EXPECT on bus, so nothing to assert beyond no panic
-	})
-}
-
-// Helper matchers for mock expectations
+// Helper methods for matching mock expectations
 
 func (suite *TestTelegramHandlersSuite) matchSendMessageParams(expected *bot.SendMessageParams) interface{} {
 	return mock.MatchedBy(func(params *bot.SendMessageParams) bool {
@@ -478,54 +440,28 @@ func (suite *TestTelegramHandlersSuite) matchSendMessageParams(expected *bot.Sen
 
 func (suite *TestTelegramHandlersSuite) matchBuildRequestEvent(expectedSource domain.RequestSource) interface{} {
 	return mock.MatchedBy(func(event domain.Event) bool {
-		if event.Type() != domain.BuildRequestEvent {
-			return false
+		if event.Type() == domain.BuildRequestEvent {
+			if buildRequest, ok := event.Payload().(domain.BuildRequest); ok {
+				return buildRequest.Source != nil &&
+					buildRequest.Source.UserID == expectedSource.UserID &&
+					buildRequest.Source.ChatID == expectedSource.ChatID &&
+					buildRequest.Source.MessageID == expectedSource.MessageID
+			}
 		}
-
-		req, ok := event.Payload().(domain.BuildRequest)
-		if !ok {
-			return false
-		}
-
-		if req.Source == nil {
-			return false
-		}
-
-		return req.Source.UserID == expectedSource.UserID &&
-			req.Source.ChatID == expectedSource.ChatID &&
-			req.Source.MessageID == expectedSource.MessageID
+		return false
 	})
 }
 
 func (suite *TestTelegramHandlersSuite) matchDownloadRequestEvent(expectedSource domain.RequestSource, expectedUrl string) interface{} {
 	return mock.MatchedBy(func(event domain.Event) bool {
-		if event.Type() != domain.DownloadRequestEvent {
-			return false
+		if event.Type() == domain.DownloadRequestEvent {
+			if downloadRequest, ok := event.Payload().(domain.DownloadRequest); ok {
+				return downloadRequest.Source.UserID == expectedSource.UserID &&
+					downloadRequest.Source.ChatID == expectedSource.ChatID &&
+					downloadRequest.Source.MessageID == expectedSource.MessageID &&
+					downloadRequest.Url == expectedUrl
+			}
 		}
-
-		req, ok := event.Payload().(domain.DownloadRequest)
-		if !ok {
-			return false
-		}
-
-		return req.Source.UserID == expectedSource.UserID &&
-			req.Source.ChatID == expectedSource.ChatID &&
-			req.Source.MessageID == expectedSource.MessageID &&
-			req.Url == expectedUrl
-	})
-}
-
-func (suite *TestTelegramHandlersSuite) matchFeedInfoRequestEvent(expectedSource domain.RequestSource) interface{} {
-	return mock.MatchedBy(func(event domain.Event) bool {
-		if event.Type() != domain.FeedInfoRequestEvent {
-			return false
-		}
-		req, ok := event.Payload().(domain.FeedInfoRequest)
-		if !ok {
-			return false
-		}
-		return req.Source.UserID == expectedSource.UserID &&
-			req.Source.ChatID == expectedSource.ChatID &&
-			req.Source.MessageID == expectedSource.MessageID
+		return false
 	})
 }

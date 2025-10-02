@@ -1,4 +1,4 @@
-package handlers
+package telegram
 
 import (
 	"log/slog"
@@ -6,8 +6,8 @@ import (
 	"github.com/go-telegram/bot/models"
 )
 
-// logUpdate returns a slog.Value for models.Update for structured logging
-func logUpdate(u *models.Update) slog.Value {
+// LogUpdate returns a slog.Value for models.Update for structured logging
+func LogUpdate(u *models.Update) slog.Value {
 	if u == nil {
 		return slog.Value{}
 	}
@@ -17,16 +17,16 @@ func logUpdate(u *models.Update) slog.Value {
 	}
 
 	if u.Message != nil {
-		attrs = append(attrs, slog.Any("message", logMessage(u.Message)))
+		attrs = append(attrs, slog.Any("message", LogMessage(u.Message)))
 	}
 	if u.EditedMessage != nil {
-		attrs = append(attrs, slog.Any("edited_message", logMessage(u.EditedMessage)))
+		attrs = append(attrs, slog.Any("edited_message", LogMessage(u.EditedMessage)))
 	}
 	if u.ChannelPost != nil {
-		attrs = append(attrs, slog.Any("channel_post", logMessage(u.ChannelPost)))
+		attrs = append(attrs, slog.Any("channel_post", LogMessage(u.ChannelPost)))
 	}
 	if u.EditedChannelPost != nil {
-		attrs = append(attrs, slog.Any("edited_channel_post", logMessage(u.EditedChannelPost)))
+		attrs = append(attrs, slog.Any("edited_channel_post", LogMessage(u.EditedChannelPost)))
 	}
 	if u.CallbackQuery != nil {
 		attrs = append(attrs, slog.String("callback_query_id", u.CallbackQuery.ID))
@@ -38,8 +38,8 @@ func logUpdate(u *models.Update) slog.Value {
 	return slog.GroupValue(attrs...)
 }
 
-// logMessage returns a slog.Value for models.Message for structured logging
-func logMessage(m *models.Message) slog.Value {
+// LogMessage returns a slog.Value for models.Message for structured logging
+func LogMessage(m *models.Message) slog.Value {
 	if m == nil {
 		return slog.Value{}
 	}
@@ -47,7 +47,7 @@ func logMessage(m *models.Message) slog.Value {
 	attrs := []slog.Attr{
 		slog.Int("id", m.ID),
 		slog.Int64("date", int64(m.Date)),
-		slog.Any("chat", logChat(&m.Chat)),
+		slog.Any("chat", LogChat(&m.Chat)),
 	}
 
 	if m.From != nil {
@@ -78,8 +78,8 @@ func logMessage(m *models.Message) slog.Value {
 	return slog.GroupValue(attrs...)
 }
 
-// logChat returns a slog.Value for models.Chat for structured logging
-func logChat(c *models.Chat) slog.Value {
+// LogChat returns a slog.Value for models.Chat for structured logging
+func LogChat(c *models.Chat) slog.Value {
 	if c == nil {
 		return slog.Value{}
 	}

@@ -19,3 +19,4 @@ packages:
       dir: './internal/mocks'
     interfaces:
       Bot:
+      API:
