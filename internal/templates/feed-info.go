@@ -15,12 +15,11 @@ const feedInfoTemplateHTML =
 {{.Description}}
 {{if .Author}}👨‍💻 By {{.Author}}{{end}}
 🌐 Language: {{.Language}}
-📚 Categories: {{categoriesList .Categories}}
+{{ $categories := categoriesEnum .Categories }}{{ if $categories }}📚 Categories: {{ $categories }}.{{ end }}
 {{if .Keywords}}🔑 Keywords: {{.Keywords}}{{end}}
 {{if .ImageUrl}}🖼️ <a href="{{.ImageUrl}}">Artwork</a>{{end}}
 {{if .WebsiteLink}}🔗 <a href="{{.WebsiteLink}}">Website</a>{{end}}
 {{if gt .EpisodeCount 0}}🎧 Number of episodes: {{.EpisodeCount}}{{else}}📭 No episodes yet{{end}}
 {{if .Explicit}}🔞 Explicit content{{end}}
 {{if gt .EpisodeCount 0}}
-
 📡 RSS: {{.RSSLink}}{{end}}`
