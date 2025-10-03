@@ -1,4 +1,4 @@
-ARG YT_DLP_VERSION=2025.08.27-r0
+ARG YT_DLP_VERSION=2025.09.26
 ARG APP_MODULE=github.com/ofstudio/voxify
 ARG APP_VERSION=latest
 ARG DATA_DIR=/data
@@ -35,8 +35,18 @@ ENV PUBLIC_DIR=${DATA_DIR}/public
 ENV DB_DIR=${DATA_DIR}/db
 ENV DB_FILEPATH=${DB_DIR}/voxify-bot.db
 
-# Install yt-dlp from Alpine repo
-RUN apk add --no-cache su-exec yt-dlp=${YT_DLP_VERSION}
+# Install dependencies
+RUN apk update && \
+    apk add --no-cache \
+      su-exec \
+      ffmpeg  \
+      python3 \
+      py3-pip
+
+# Install yt-dlp
+RUN python3 -m venv /opt/yt-dlp && \
+    /opt/yt-dlp/bin/pip install yt-dlp==${YT_DLP_VERSION} && \
+    ln -s /opt/yt-dlp/bin/yt-dlp /usr/local/bin/yt-dlp
 
 # Add entrypoint script and make it executable
 COPY entrypoint /
