@@ -365,6 +365,74 @@ func (_c *MockBot_RegisterHandlerRegexp_Call) RunAndReturn(run func(handlerType 
 	return _c
 }
 
+// SendMessage provides a mock function for the type MockBot
+func (_mock *MockBot) SendMessage(ctx context.Context, p *bot.SendMessageParams) (*models.Message, error) {
+	ret := _mock.Called(ctx, p)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SendMessage")
+	}
+
+	var r0 *models.Message
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *bot.SendMessageParams) (*models.Message, error)); ok {
+		return returnFunc(ctx, p)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *bot.SendMessageParams) *models.Message); ok {
+		r0 = returnFunc(ctx, p)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*models.Message)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *bot.SendMessageParams) error); ok {
+		r1 = returnFunc(ctx, p)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockBot_SendMessage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SendMessage'
+type MockBot_SendMessage_Call struct {
+	*mock.Call
+}
+
+// SendMessage is a helper method to define mock.On call
+//   - ctx context.Context
+//   - p *bot.SendMessageParams
+func (_e *MockBot_Expecter) SendMessage(ctx interface{}, p interface{}) *MockBot_SendMessage_Call {
+	return &MockBot_SendMessage_Call{Call: _e.mock.On("SendMessage", ctx, p)}
+}
+
+func (_c *MockBot_SendMessage_Call) Run(run func(ctx context.Context, p *bot.SendMessageParams)) *MockBot_SendMessage_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *bot.SendMessageParams
+		if args[1] != nil {
+			arg1 = args[1].(*bot.SendMessageParams)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockBot_SendMessage_Call) Return(message *models.Message, err error) *MockBot_SendMessage_Call {
+	_c.Call.Return(message, err)
+	return _c
+}
+
+func (_c *MockBot_SendMessage_Call) RunAndReturn(run func(ctx context.Context, p *bot.SendMessageParams) (*models.Message, error)) *MockBot_SendMessage_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Start provides a mock function for the type MockBot
 func (_mock *MockBot) Start(ctx context.Context) {
 	_mock.Called(ctx)

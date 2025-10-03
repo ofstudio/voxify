@@ -14,10 +14,14 @@ type Middleware func(next HandlerFunc) HandlerFunc
 // HandlerFunc defines a function to handle a Telegram update.
 type HandlerFunc func(ctx context.Context, api API, update *models.Update)
 
+type Option func(b *Bot)
+
 // Bot is a minimal abstraction over github.com/go-telegram/bot.
 // It defines the subset of functionality needed in this project and enables
 // replacing the real bot with a mock for convenient testing.
 type Bot interface {
+	API
+
 	// ID returns the bot's Telegram ID.
 	ID() int64
 
