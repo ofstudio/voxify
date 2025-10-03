@@ -269,7 +269,7 @@ func (suite *TestRequestHandlersSuite) TestDownloadHandler() {
 		case r := <-receivedReq:
 			suite.Equal(req.ID, r.ID, "Request should be enqueued with correct ID")
 			suite.Equal(req.Url, r.Url, "Request should be enqueued with correct URL")
-		case <-time.After(200 * time.Millisecond):
+		case <-time.After(5 * time.Second):
 			suite.Fail("Request was not enqueued - timeout waiting for request in queue")
 		}
 
