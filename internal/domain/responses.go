@@ -57,9 +57,6 @@ func (r FeedInfoResponse) LogValue() slog.Value {
 	if r.Error != nil {
 		attrs = append(attrs, slog.String("error", r.Error.Error()))
 	}
-	if r.FeedInfo != nil {
-		attrs = append(attrs, slog.Any("feed", r.FeedInfo))
-	}
 	attrs = append(attrs, slog.Any("request", r.Request))
 	return slog.GroupValue(attrs...)
 }
