@@ -4,16 +4,17 @@ import (
 	"context"
 	"log/slog"
 	"testing"
-	"time"
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/ofstudio/voxify/internal/config"
 	"github.com/ofstudio/voxify/internal/domain"
 	"github.com/ofstudio/voxify/internal/mocks"
 	"github.com/ofstudio/voxify/internal/templates"
+	"github.com/ofstudio/voxify/pkg/telegram"
 )
 
 // TestTelegramHandlers is the entry point for running the test suite
@@ -26,6 +27,7 @@ type TestTelegramHandlersSuite struct {
 	suite.Suite
 	ctx      context.Context
 	cancel   context.CancelFunc
+	cfg      config.Settings
 	log      *slog.Logger
 	bus      *mocks.MockEventBus
 	bot      *mocks.MockBot
@@ -41,12 +43,13 @@ func (suite *TestTelegramHandlersSuite) SetupTest() {
 // SetupSubTest is called before each subtest in the suite
 func (suite *TestTelegramHandlersSuite) SetupSubTest() {
 	suite.ctx, suite.cancel = context.WithCancel(context.Background())
+	suite.cfg = config.Default().Settings
 	suite.log = slog.Default()
 	suite.bus = mocks.NewMockEventBus(suite.T())
 	suite.bot = mocks.NewMockBot(suite.T())
 	suite.api = mocks.NewMockAPI(suite.T())
 
-	suite.handlers = NewTelegramHandlers(suite.log, suite.bus, suite.bot)
+	suite.handlers = NewTelegramHandlers(suite.cfg, suite.log, suite.bus).WithBot(suite.bot)
 }
 
 // TearDownTest is called after each test in the suite completes
@@ -101,16 +104,28 @@ func (suite *TestTelegramHandlersSuite) createUrlUpdate() *models.Update {
 
 func (suite *TestTelegramHandlersSuite) TestNewTelegramHandlers() {
 	// Act
-	handlers := NewTelegramHandlers(suite.log, suite.bus, suite.bot)
+	handlers := NewTelegramHandlers(suite.cfg, suite.log, suite.bus)
 
 	// Assert
 	suite.NotNil(handlers)
+	suite.Equal(suite.cfg, handlers.cfg)
 	suite.Equal(suite.log, handlers.log)
 	suite.Equal(suite.bus, handlers.bus)
+	suite.Nil(handlers.bot) // bot should be nil until WithBot is called
+}
+
+func (suite *TestTelegramHandlersSuite) TestWithBot() {
+	// Arrange
+	handlers := NewTelegramHandlers(suite.cfg, suite.log, suite.bus)
+
+	// Act
+	result := handlers.WithBot(suite.bot)
+
+	// Assert
+	suite.Equal(handlers, result) // should return same instance for chaining
 	suite.Equal(suite.bot, handlers.bot)
 }
 
-// New test: Start
 func (suite *TestTelegramHandlersSuite) TestStart() {
 	suite.Run("RegistersHandlersAndStartsBot", func() {
 		// Arrange: expect RegisterHandler calls for start, build, info and url
@@ -119,45 +134,36 @@ func (suite *TestTelegramHandlersSuite) TestStart() {
 		suite.bot.EXPECT().RegisterHandler(bot.HandlerTypeMessageText, "info", bot.MatchTypeCommand, mock.Anything).Return("r_info")
 		suite.bot.EXPECT().RegisterHandler(bot.HandlerTypeMessageText, "https://", bot.MatchTypePrefix, mock.Anything).Return("r_url")
 
-		// Expect Start to be called; signal via channel when it is.
-		called := make(chan struct{}, 1)
-		suite.bot.EXPECT().Start(mock.Anything).Run(func(ctx context.Context) {
-			// Notify that Start was invoked
-			select {
-			case called <- struct{}{}:
-			default:
-			}
-		}).Return()
-
 		// Act
-		err := suite.handlers.Start(suite.ctx)
+		err := suite.handlers.Init(suite.ctx)
 
 		// Assert
 		suite.NoError(err)
-
-		select {
-		case <-called:
-			// Start was called as expected
-		case <-time.After(time.Second):
-			suite.Fail("expected bot.Start to be called")
-		}
+		suite.bot.AssertExpectations(suite.T())
 	})
-}
 
-// Test ErrorsHandler method
-
-func (suite *TestTelegramHandlersSuite) TestErrorsHandler() {
-	suite.Run("HandlesError", func() {
+	suite.Run("ReturnsErrorWhenBotNotSet", func() {
 		// Arrange
-		testError := domain.ErrDownloadFailed
+		handlers := NewTelegramHandlers(suite.cfg, suite.log, suite.bus)
 
 		// Act
-		errorHandler := suite.handlers.ErrorsHandler()
+		err := handlers.Init(suite.ctx)
 
-		// Assert - should not panic
-		suite.NotPanics(func() {
-			errorHandler(testError)
-		})
+		// Assert
+		suite.Error(err)
+		suite.Contains(err.Error(), "telegram bot is not set")
+	})
+
+	suite.Run("ReturnsErrorWhenEventBusNotSet", func() {
+		// Arrange
+		handlers := NewTelegramHandlers(suite.cfg, suite.log, nil).WithBot(suite.bot)
+
+		// Act
+		err := handlers.Init(suite.ctx)
+
+		// Assert
+		suite.Error(err)
+		suite.Contains(err.Error(), "event bus is not set")
 	})
 }
 
@@ -378,6 +384,278 @@ func (suite *TestTelegramHandlersSuite) TestSendMessage() {
 
 		// Assert
 		suite.api.AssertExpectations(suite.T())
+	})
+}
+
+// Test AllowedUsersMiddleware
+
+func (suite *TestTelegramHandlersSuite) TestAllowedUsersMiddleware() {
+	suite.Run("AllowsUserInAllowedList", func() {
+		// Arrange
+		allowedUsers := []int64{12345, 67890}
+		update := suite.createStartUpdate() // userID is 12345
+		nextCalled := false
+
+		next := func(ctx context.Context, api telegram.API, update *models.Update) {
+			nextCalled = true
+		}
+
+		middleware := suite.handlers.AllowedUsersMiddleware(suite.log, allowedUsers)
+
+		// Act
+		handler := middleware(next)
+		handler(suite.ctx, suite.api, update)
+
+		// Assert
+		suite.True(nextCalled, "next handler should be called for allowed user")
+	})
+
+	suite.Run("BlocksUserNotInAllowedList", func() {
+		// Arrange
+		allowedUsers := []int64{67890, 11111}
+		update := suite.createStartUpdate() // userID is 12345
+		nextCalled := false
+
+		next := func(ctx context.Context, api telegram.API, update *models.Update) {
+			nextCalled = true
+		}
+
+		middleware := suite.handlers.AllowedUsersMiddleware(suite.log, allowedUsers)
+
+		// Act
+		handler := middleware(next)
+		handler(suite.ctx, suite.api, update)
+
+		// Assert
+		suite.False(nextCalled, "next handler should not be called for blocked user")
+	})
+
+	suite.Run("AllowsUserFromCallbackQuery", func() {
+		// Arrange
+		allowedUsers := []int64{54321}
+		update := &models.Update{
+			CallbackQuery: &models.CallbackQuery{
+				From: models.User{ID: 54321},
+			},
+		}
+		nextCalled := false
+
+		next := func(ctx context.Context, api telegram.API, update *models.Update) {
+			nextCalled = true
+		}
+
+		middleware := suite.handlers.AllowedUsersMiddleware(suite.log, allowedUsers)
+
+		// Act
+		handler := middleware(next)
+		handler(suite.ctx, suite.api, update)
+
+		// Assert
+		suite.True(nextCalled, "next handler should be called for allowed user from callback query")
+	})
+
+	suite.Run("BlocksUserFromCallbackQuery", func() {
+		// Arrange
+		allowedUsers := []int64{11111}
+		update := &models.Update{
+			CallbackQuery: &models.CallbackQuery{
+				From: models.User{ID: 54321},
+			},
+		}
+		nextCalled := false
+
+		next := func(ctx context.Context, api telegram.API, update *models.Update) {
+			nextCalled = true
+		}
+
+		middleware := suite.handlers.AllowedUsersMiddleware(suite.log, allowedUsers)
+
+		// Act
+		handler := middleware(next)
+		handler(suite.ctx, suite.api, update)
+
+		// Assert
+		suite.False(nextCalled, "next handler should not be called for blocked user from callback query")
+	})
+
+	suite.Run("AllowsUserFromInlineQuery", func() {
+		// Arrange
+		allowedUsers := []int64{99999}
+		update := &models.Update{
+			InlineQuery: &models.InlineQuery{
+				From: &models.User{ID: 99999},
+			},
+		}
+		nextCalled := false
+
+		next := func(ctx context.Context, api telegram.API, update *models.Update) {
+			nextCalled = true
+		}
+
+		middleware := suite.handlers.AllowedUsersMiddleware(suite.log, allowedUsers)
+
+		// Act
+		handler := middleware(next)
+		handler(suite.ctx, suite.api, update)
+
+		// Assert
+		suite.True(nextCalled, "next handler should be called for allowed user from inline query")
+	})
+
+	suite.Run("BlocksUserFromInlineQuery", func() {
+		// Arrange
+		allowedUsers := []int64{11111}
+		update := &models.Update{
+			InlineQuery: &models.InlineQuery{
+				From: &models.User{ID: 99999},
+			},
+		}
+		nextCalled := false
+
+		next := func(ctx context.Context, api telegram.API, update *models.Update) {
+			nextCalled = true
+		}
+
+		middleware := suite.handlers.AllowedUsersMiddleware(suite.log, allowedUsers)
+
+		// Act
+		handler := middleware(next)
+		handler(suite.ctx, suite.api, update)
+
+		// Assert
+		suite.False(nextCalled, "next handler should not be called for blocked user from inline query")
+	})
+
+	suite.Run("AllowsUserFromEditedMessage", func() {
+		// Arrange
+		allowedUsers := []int64{77777}
+		update := &models.Update{
+			EditedMessage: &models.Message{
+				From: &models.User{ID: 77777},
+			},
+		}
+		nextCalled := false
+
+		next := func(ctx context.Context, api telegram.API, update *models.Update) {
+			nextCalled = true
+		}
+
+		middleware := suite.handlers.AllowedUsersMiddleware(suite.log, allowedUsers)
+
+		// Act
+		handler := middleware(next)
+		handler(suite.ctx, suite.api, update)
+
+		// Assert
+		suite.True(nextCalled, "next handler should be called for allowed user from edited message")
+	})
+
+	suite.Run("BlocksUserFromEditedMessage", func() {
+		// Arrange
+		allowedUsers := []int64{11111}
+		update := &models.Update{
+			EditedMessage: &models.Message{
+				From: &models.User{ID: 77777},
+			},
+		}
+		nextCalled := false
+
+		next := func(ctx context.Context, api telegram.API, update *models.Update) {
+			nextCalled = true
+		}
+
+		middleware := suite.handlers.AllowedUsersMiddleware(suite.log, allowedUsers)
+
+		// Act
+		handler := middleware(next)
+		handler(suite.ctx, suite.api, update)
+
+		// Assert
+		suite.False(nextCalled, "next handler should not be called for blocked user from edited message")
+	})
+
+	suite.Run("BlocksUpdateWhenUserIDCannotBeDetermined", func() {
+		// Arrange
+		allowedUsers := []int64{12345}
+		update := &models.Update{} // No message, callback, inline query, or edited message
+		nextCalled := false
+
+		next := func(ctx context.Context, api telegram.API, update *models.Update) {
+			nextCalled = true
+		}
+
+		middleware := suite.handlers.AllowedUsersMiddleware(suite.log, allowedUsers)
+
+		// Act
+		handler := middleware(next)
+		handler(suite.ctx, suite.api, update)
+
+		// Assert
+		suite.False(nextCalled, "next handler should not be called when user ID cannot be determined")
+	})
+
+	suite.Run("BlocksUpdateWhenMessageFromIsNil", func() {
+		// Arrange
+		allowedUsers := []int64{12345}
+		update := &models.Update{
+			Message: &models.Message{From: nil},
+		}
+		nextCalled := false
+
+		next := func(ctx context.Context, api telegram.API, update *models.Update) {
+			nextCalled = true
+		}
+
+		middleware := suite.handlers.AllowedUsersMiddleware(suite.log, allowedUsers)
+
+		// Act
+		handler := middleware(next)
+		handler(suite.ctx, suite.api, update)
+
+		// Assert
+		suite.False(nextCalled, "next handler should not be called when message.From is nil")
+	})
+
+	suite.Run("BlocksUpdateWhenEditedMessageFromIsNil", func() {
+		// Arrange
+		allowedUsers := []int64{12345}
+		update := &models.Update{
+			EditedMessage: &models.Message{From: nil},
+		}
+		nextCalled := false
+
+		next := func(ctx context.Context, api telegram.API, update *models.Update) {
+			nextCalled = true
+		}
+
+		middleware := suite.handlers.AllowedUsersMiddleware(suite.log, allowedUsers)
+
+		// Act
+		handler := middleware(next)
+		handler(suite.ctx, suite.api, update)
+
+		// Assert
+		suite.False(nextCalled, "next handler should not be called when edited message.From is nil")
+	})
+
+	suite.Run("BlocksAllUsersWhenAllowedListIsEmpty", func() {
+		// Arrange - when allowedUsers is empty, all users should be blocked
+		var allowedUsers []int64
+		update := suite.createStartUpdate()
+		nextCalled := false
+
+		next := func(ctx context.Context, api telegram.API, update *models.Update) {
+			nextCalled = true
+		}
+
+		middleware := suite.handlers.AllowedUsersMiddleware(suite.log, allowedUsers)
+
+		// Act
+		handler := middleware(next)
+		handler(suite.ctx, suite.api, update)
+
+		// Assert
+		suite.False(nextCalled, "next handler should not be called when allowed users list is empty")
 	})
 }
 
