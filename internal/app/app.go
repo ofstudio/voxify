@@ -7,102 +7,129 @@ import (
 
 	"github.com/go-telegram/bot"
 	"github.com/ofstudio/voxify/internal/config"
+	"github.com/ofstudio/voxify/internal/domain"
+	"github.com/ofstudio/voxify/internal/events"
+	"github.com/ofstudio/voxify/internal/handlers"
 	"github.com/ofstudio/voxify/internal/platforms"
 	"github.com/ofstudio/voxify/internal/services"
 	"github.com/ofstudio/voxify/internal/store"
-	"github.com/ofstudio/voxify/internal/telegram"
+	"github.com/ofstudio/voxify/internal/templates"
+	"github.com/ofstudio/voxify/pkg/telegram"
 )
 
+// App represents the main application.
 type App struct {
-	cfg config.Config
-	log *slog.Logger
+	cfg      config.Config
+	log      *slog.Logger
+	store    domain.Store
+	bus      domain.EventBus
+	bot      telegram.Bot
+	services *services.Container
+	handlers *handlers.Container
 }
 
+// New creates a new App instance.
 func New(cfg config.Config, log *slog.Logger) *App {
-	return &App{
-		cfg: cfg,
-		log: log,
-	}
+	return &App{cfg: cfg, log: log}
 }
 
-func (a *App) Start(ctx context.Context) error {
-
-	// Connect to the database
-	db, err := store.NewSQLite(a.cfg.DB.Filepath, a.cfg.DB.Version)
-	if err != nil {
-		return fmt.Errorf("failed to initialize database: %w", err)
-	}
-	a.log.Info("database connected", "filepath", a.cfg.DB.Filepath, "version", a.cfg.DB.Version)
-
-	// Create store
-	st := store.NewSQLiteStore(db)
-	// Create platforms
-	ytDlp := platforms.NewYtDlpPlatform(a.cfg.Settings, a.log)
-
-	// Create services
-	var (
-		feedSrv    = services.NewFeedService(&a.cfg.Settings, a.log, st)
-		episodeSrv = services.NewEpisodeService(&a.cfg.Settings, a.log, st, ytDlp)
-		processSrv = services.NewProcessService(&a.cfg.Settings, a.log, st, episodeSrv, feedSrv)
-	)
-
-	// Initialize services
-	if err = episodeSrv.Init(ctx); err != nil {
-		return fmt.Errorf("episode service init failed: %w", err)
-	}
-	if err = feedSrv.Init(ctx); err != nil {
-		return fmt.Errorf("feed service init failed: %w", err)
-	}
-	if err = processSrv.Init(ctx); err != nil {
-		return fmt.Errorf("process service init failed: %w", err)
-	}
-	a.log.Info("services initialized")
-
-	// Initialize Telegram bot
-	middleware := telegram.NewMiddleware(a.cfg.Telegram, a.log)
-	handlers := telegram.NewHandlers(a.cfg.Settings, a.log, processSrv.In(), feedSrv)
-
-	b, err := bot.New(a.cfg.Telegram.BotToken, []bot.Option{
-		bot.WithMiddlewares(middleware.WithAllowedUsers()),
-		bot.WithErrorsHandler(handlers.Error()),
-	}...)
-	if err != nil {
-		return fmt.Errorf("failed to create bot: %w", err)
+// Start initializes and starts the application.
+func (app *App) Start(ctx context.Context) error {
+	// Initialize app components
+	if err := app.init(ctx); err != nil {
+		return fmt.Errorf("app initialization failed: %w", err)
 	}
 
-	b.RegisterHandler(bot.HandlerTypeMessageText, "start", bot.MatchTypeCommandStartOnly, handlers.CmdStart())
-	b.RegisterHandler(bot.HandlerTypeMessageText, "build", bot.MatchTypeCommand, handlers.CmdBuild())
-	b.RegisterHandler(bot.HandlerTypeMessageText, "info", bot.MatchTypeCommand, handlers.CmdInfo())
-	b.RegisterHandler(bot.HandlerTypeMessageText, "https://", bot.MatchTypePrefix, handlers.Url())
+	//start the bot
+	go func() {
+		app.bot.Start(ctx)
+		app.log.Info("[app] telegram bot stopped")
+	}()
 
-	notifications := telegram.NewNotifications(a.log, b, processSrv.Out())
+	app.log.Info("[app] telegram bot started", "bot_user_id", app.bot.ID())
+	app.log.Info("[app] application started")
 
-	// Start bot and notifications
-	ctxBot, cancelBot := context.WithCancel(ctx)
-	defer cancelBot()
-	go b.Start(ctxBot)
-	a.log.Info("telegram bot started", "id", b.ID())
-
-	// Start background services
-	ctxSrv, cancelSrv := context.WithCancel(ctx)
-	defer cancelSrv()
-	notifications.Start(ctxSrv)
-	processSrv.Start(ctxSrv)
-	a.log.Info("background services started")
-
-	// Wait for the context to be done
-	a.log.Info("app is running")
+	// Wait for the shutdown signal
 	<-ctx.Done()
 
-	// Shutdown
+	// Shutdown components
+	app.handlers.Wait()
+	app.bus.Wait()
+	app.store.Close()
 
-	// Stop background services
-	cancelSrv()
-	a.log.Info("background services stopped")
+	app.log.Info("[app] application stopped")
+	return nil
+}
 
-	// Stop the bot
-	cancelBot()
-	a.log.Info("telegram bot stopped")
+// init initializes the application components.
+func (app *App) init(ctx context.Context) error {
+
+	var err error
+	// Initialize templates
+	if err = templates.Init(ctx); err != nil {
+		return fmt.Errorf("templates initialization failed: %w", err)
+	}
+
+	// Create event bus
+	app.bus = events.NewAsyncBus(app.log)
+
+	// Initialize store
+	if app.store, err = app.initStore(); err != nil {
+		return fmt.Errorf("store initialization failed: %w", err)
+	}
+
+	// Initialize services
+	if app.services, err = app.initServices(ctx); err != nil {
+		return fmt.Errorf("services initialization failed: %w", err)
+	}
+
+	// Create handlers
+	app.handlers = handlers.New(app.cfg.Settings, app.log, app.bus).
+		WithBuilder(app.services.Feed).
+		WithDownloader(app.services.Episode)
+
+	// Create bot
+	app.bot, err = telegram.NewBot(
+		app.cfg.Telegram.BotToken,
+		bot.WithAllowedUpdates(bot.AllowedUpdates{"message"}),
+		bot.WithErrorsHandler(app.handlers.Telegram.ErrorsHandler(app.log)),
+		bot.WithMiddlewares(telegram.Middlewares(
+			app.handlers.Telegram.AllowedUsersMiddleware(app.log, app.cfg.Telegram.AllowedUsers),
+		)...),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create telegram bot: %w", err)
+	}
+
+	// Initialize handlers with the bot
+	if err = app.handlers.WithBot(app.bot).Init(ctx); err != nil {
+		return fmt.Errorf("handlers start failed: %w", err)
+	}
 
 	return nil
+}
+
+// initStore initializes the data store.
+func (app *App) initStore() (domain.Store, error) {
+	// Connect to the database
+	db, err := store.NewSQLite(app.cfg.DB.Filepath, app.cfg.DB.Version)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize database: %w", err)
+	}
+	return store.NewSQLiteStore(db), nil
+}
+
+// initServices initializes the application services.
+func (app *App) initServices(ctx context.Context) (*services.Container, error) {
+	// Create platforms
+	ytDlp := platforms.NewYtDlpPlatform(app.cfg.Settings, app.log)
+
+	// Create services
+	s := services.New(app.cfg.Settings, app.log, app.store, ytDlp)
+
+	// Initialize services
+	if err := s.Init(ctx); err != nil {
+		return nil, fmt.Errorf("failed to initialize services: %w", err)
+	}
+	return s, nil
 }
