@@ -15,6 +15,7 @@ send YouTube links or other supported video URLs to the Telegram bot, and it wil
 - Extract high-quality audio in your preferred format (MP3, M4A, etc.)
 - Generate episode thumbnails and metadata
 - Add episodes to your personal RSS podcast feed
+- Create a landing page with episode cards
 - Make the content accessible through any podcast player
 
 The bot maintains a single RSS feed for your deployment, collecting episodes from the allowed users you configure. Perfect for listening to educational content, tech talks, interviews, or any video content during commutes,
@@ -28,6 +29,7 @@ workouts, or while multitasking.
 4. **Start using the bot**:
     - Send YouTube or other supported video URLs to your bot
     - The bot will process the video and add it to your podcast feed
+    - View your episodes at `https://yourdomain.com/` (landing page with episode cards)
     - Access your RSS feed at `https://yourdomain.com/rss.xml`
     - Subscribe to the feed in your favorite podcast player
 
@@ -69,7 +71,8 @@ The easiest way to deploy Voxify is using the pre-built Docker image with Docker
 4. **Edit the configuration**:
     - Update `.env` with your bot token, user IDs, and other settings
     - Modify `docker-compose.yaml` to replace placeholders with your actual values:
-        - Replace `</path/to/data>` with your actual data directory path
+        - Replace `</path/to/data>` with your actual data directory path (e.g., `/path/to/voxify-data`)
+        - Replace `</path/to/letsencrypt/data>` with path for Let's Encrypt certificates storage
         - Replace `<mydomain.com>` with your domain name
         - Replace `<my@email.org>` with your email for Let's Encrypt
         - Set `VERSION` to the latest release version
@@ -104,7 +107,7 @@ Check [packages](https://github.com/ofstudio/voxify/pkgs/container/voxify) for t
 | `DOWNLOAD_TIMEOUT`       | *Optional.* Timeout for downloading media. Default: `1h` (formats: 30s, 10m, 1h)                                                                                                |
 | `DOWNLOAD_FORMAT`        | *Optional.* Media download format. Default: `mp3` (options: mp3, m4a, etc.)                                                                                                     |
 | `DOWNLOAD_QUALITY`       | *Optional.* Audio quality for downloaded media. Default: `192k`                                                                                                                 |
-|  `DOWNLOAD_WORKERS`      | *Optional.* Number of concurrent download workers. Default: `2`                                                                                                                 |
+| `DOWNLOAD_WORKERS`       | *Optional.* Number of concurrent download workers. Default: `2`                                                                                                                 |
 | `THUMBNAIL_SIZE`         | *Optional.* Size of square thumbnail in pixels. Default: `3000`                                                                                                                 |
 | `YT_DLP_PATH`            | *Optional.* Path to yt-dlp executable. Default: `yt-dlp`                                                                                                                        |
 | `FFMPEG_PATH`            | *Optional.* Path to ffmpeg executable. Default: `ffmpeg`                                                                                                                        |
