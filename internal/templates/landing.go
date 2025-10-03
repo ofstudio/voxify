@@ -34,6 +34,7 @@ const landingTemplateHTML =
             --bg: #f6f7fb;
             --elev-1: #ffffff;
             --text: #0b0c0f;
+			--descr: #454b52;
             --muted: #5f6472;
             --link: #0b68ff;
             --chip-bg: #eef1f8;
@@ -53,6 +54,7 @@ const landingTemplateHTML =
                 --bg: #0c0e16;
                 --elev-1: #141824;
                 --text: #f1f3f5;
+                --descr: #68728c;
                 --muted: #a4a9b6;
                 --link: #7ab5ff;
                 --chip-bg: #1b2030;
@@ -256,7 +258,7 @@ const landingTemplateHTML =
 
         .card p {
             margin: 0 0 8px;
-            color: var(--muted);
+            color: var(--descr);
             font-size: 14px;
         }
 
@@ -372,7 +374,7 @@ const landingTemplateHTML =
                             <div class="thumb">{{if $e.ThumbnailFile}}<img src="{{ $e.ThumbnailFile }}" alt="Episode artwork">{{end}}</div>
                             <div>
                                 <h3>{{ $e.Title }}</h3>
-                                <p>{{ truncate $e.Description 180 }}</p>
+                                <p>{{ truncate $e.Description 128 }}</p>
                                 <div class="row">
                                     <span>{{ episodeDate $e.CreatedAt }}</span><span>·</span><span>{{ $e.Author }}</span>
                                 </div>
