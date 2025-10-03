@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v1.0.0] - 2025-10-03
+
+### Added
+
+- Landing page with episode cards and light/dark theme support, displaying feed information and all episodes with thumbnails, titles and  descriptions.
+- Automated installation of the latest yt-dlp version via `pip` during Docker image build (instead of Alpine package).
+
+### Changed
+
+- Significant application architecture refactoring, improving code organization, maintainability, and testability.
+- Enhanced template system with separate templates for landing page and feed information display.
+- Improved error handling and logging throughout the application for better debugging and monitoring.
+
 ## [v0.1.0] - 2025-09-22
 
 ### Added
@@ -37,7 +50,9 @@ Initial public release (tagged `v0.0.1`).
 
 ---
 
-[Unreleased]: https://github.com/ofstudio/voxify/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/ofstudio/voxify/compare/v1.0.0...HEAD
+
+[v1.0.0]: https://github.com/ofstudio/voxify/compare/v0.1.0...v1.0.0
 
 [v0.1.0]: https://github.com/ofstudio/voxify/compare/v0.0.1...v0.1.0
 
