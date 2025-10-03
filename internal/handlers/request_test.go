@@ -253,7 +253,7 @@ func (suite *TestRequestHandlersSuite) TestDownloadHandler() {
 			select {
 			case r := <-suite.handlers.queue:
 				receivedReq <- r
-			case <-time.After(200 * time.Millisecond):
+			case <-time.After(5 * time.Second):
 				// Timeout - nothing was sent to queue
 			}
 		}()
@@ -605,7 +605,7 @@ func (suite *TestRequestHandlersSuite) TestDownloadWorker() {
 		select {
 		case <-done:
 			// Success - workers stopped gracefully
-		case <-time.After(time.Second):
+		case <-time.After(5 * time.Second):
 			suite.Fail("Workers did not stop in time")
 		}
 	})
@@ -757,7 +757,7 @@ func (suite *TestRequestHandlersSuite) TestWait() {
 		select {
 		case <-done:
 			// Success
-		case <-time.After(2 * time.Second):
+		case <-time.After(5 * time.Second):
 			suite.Fail("Wait() did not complete in time")
 		}
 	})

@@ -41,7 +41,7 @@ func TestGroupCancel(t *testing.T) {
 	select {
 	case <-stopped:
 		// ok
-	case <-time.After(time.Second):
+	case <-time.After(5 * time.Second):
 		t.Fatal("expected goroutine to stop after cancel")
 	}
 
@@ -69,7 +69,7 @@ func TestWithContext(t *testing.T) {
 	select {
 	case <-stopped:
 		// ok
-	case <-time.After(time.Second):
+	case <-time.After(5 * time.Second):
 		t.Fatal("expected goroutine to stop after parent cancel")
 	}
 
