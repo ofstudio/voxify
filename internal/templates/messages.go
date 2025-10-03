@@ -53,18 +53,14 @@ func MsgError(err error) string {
 	switch {
 	case err == nil:
 		return MsgUnknownError
-	case errors.Is(err, domain.ErrBuildFeedFailed):
-		return MsgBuildFeedFailed
-	case errors.Is(err, domain.ErrBuildLandingFailed):
-		return MsgBuildLandingFailed
+	case errors.Is(err, domain.ErrDownloadInterrupted):
+		return MsgDownloadInterrupted
 	case errors.Is(err, domain.ErrDownloadFailed):
 		return MsgDownloadFailed
 	case errors.Is(err, domain.ErrDownloadInProgress):
 		return MsgDownloadInProgress
 	case errors.Is(err, domain.ErrDownloadExists):
 		return MsgDownloadExists
-	case errors.Is(err, domain.ErrDownloadInterrupted):
-		return MsgDownloadInterrupted
 	case errors.Is(err, domain.ErrDownloadBusy):
 		return MsgDownloadBusy
 	case errors.Is(err, domain.ErrNoMatchingPlatform):
@@ -74,6 +70,10 @@ func MsgError(err error) string {
 		errors.Is(err, domain.ErrInvalidFormat),
 		errors.Is(err, domain.ErrDownloadQuality):
 		return MsgInvalidRequest
+	case errors.Is(err, domain.ErrBuildFeedFailed):
+		return MsgBuildFeedFailed
+	case errors.Is(err, domain.ErrBuildLandingFailed):
+		return MsgBuildLandingFailed
 	default:
 		return MsgSomethingWentWrong
 	}
