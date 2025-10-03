@@ -121,3 +121,36 @@ func (_c *MockEventBus_Subscribe_Call) RunAndReturn(run func(eventType domain.Ev
 	_c.Run(run)
 	return _c
 }
+
+// Wait provides a mock function for the type MockEventBus
+func (_mock *MockEventBus) Wait() {
+	_mock.Called()
+	return
+}
+
+// MockEventBus_Wait_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Wait'
+type MockEventBus_Wait_Call struct {
+	*mock.Call
+}
+
+// Wait is a helper method to define mock.On call
+func (_e *MockEventBus_Expecter) Wait() *MockEventBus_Wait_Call {
+	return &MockEventBus_Wait_Call{Call: _e.mock.On("Wait")}
+}
+
+func (_c *MockEventBus_Wait_Call) Run(run func()) *MockEventBus_Wait_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockEventBus_Wait_Call) Return() *MockEventBus_Wait_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockEventBus_Wait_Call) RunAndReturn(run func()) *MockEventBus_Wait_Call {
+	_c.Run(run)
+	return _c
+}

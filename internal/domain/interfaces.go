@@ -28,6 +28,7 @@ type Platform interface {
 type EventBus interface {
 	Publish(event Event)
 	Subscribe(eventType EventType, handler EventHandler)
+	Wait()
 }
 
 // Store defines the interface for a data store that manages episodes.
