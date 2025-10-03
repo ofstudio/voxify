@@ -12,6 +12,7 @@ import (
 var tmplFns = template.FuncMap{
 	"truncate":       tmplTruncate,
 	"categoriesList": tmplCategoriesList,
+	"categoriesEnum": tmplCategoriesEnum,
 	"episodeDate":    tmplEpisodeDate,
 	"episodeURL":     tmplEpisodeURL,
 }
@@ -40,6 +41,12 @@ func tmplCategoriesList(cats []domain.FeedCategory) []string {
 		}
 	}
 	return result
+}
+
+// tmplCategoriesEnum - template helper to get a comma-separated string of categories.
+func tmplCategoriesEnum(cats []domain.FeedCategory) string {
+	list := tmplCategoriesList(cats)
+	return strings.Join(list, ", ")
 }
 
 // tmplEpisodeDate - template helper to format episode date.

@@ -99,6 +99,81 @@ func (suite *TestTemplateFunctionsSuite) TestCategoriesListFunction() {
 
 }
 
+// TestCategoriesEnumFunction tests the tmplCategoriesEnum function
+func (suite *TestTemplateFunctionsSuite) TestCategoriesEnumFunction() {
+	suite.Run("empty categories", func() {
+		result := tmplCategoriesEnum([]domain.FeedCategory{})
+		suite.Equal("", result, "Should return empty string for empty input")
+	})
+
+	suite.Run("single category without subcategories", func() {
+		categories := []domain.FeedCategory{
+			{Text: "Technology"},
+		}
+		result := tmplCategoriesEnum(categories)
+		suite.Equal("Technology", result)
+	})
+
+	suite.Run("multiple categories without subcategories", func() {
+		categories := []domain.FeedCategory{
+			{Text: "Technology"},
+			{Text: "Education"},
+			{Text: "Business"},
+		}
+		result := tmplCategoriesEnum(categories)
+		suite.Equal("Technology, Education, Business", result)
+	})
+
+	suite.Run("categories with subcategories", func() {
+		categories := []domain.FeedCategory{
+			{Text: "Technology", Subcategories: []string{"Software", "Hardware"}},
+			{Text: "Education", Subcategories: []string{"Online"}},
+		}
+		result := tmplCategoriesEnum(categories)
+		suite.Equal("Technology, Software, Hardware, Education, Online", result)
+	})
+
+	suite.Run("mixed categories", func() {
+		categories := []domain.FeedCategory{
+			{Text: "Technology", Subcategories: []string{"Software"}},
+			{Text: "Education"}, // no subcategories
+			{Text: "Business", Subcategories: []string{"Marketing", "Finance"}},
+		}
+		result := tmplCategoriesEnum(categories)
+		suite.Equal("Technology, Software, Education, Business, Marketing, Finance", result)
+	})
+
+	suite.Run("nil input", func() {
+		result := tmplCategoriesEnum(nil)
+		suite.Equal("", result, "Should handle nil input gracefully")
+	})
+
+	suite.Run("categories with special characters", func() {
+		categories := []domain.FeedCategory{
+			{Text: "Arts & Crafts"},
+			{Text: "Health & Fitness"},
+		}
+		result := tmplCategoriesEnum(categories)
+		suite.Equal("Arts & Crafts, Health & Fitness", result)
+	})
+
+	suite.Run("in template context", func() {
+		tmpl, err := template.New("test").Funcs(tmplFns).Parse(`{{ categoriesEnum . }}`)
+		suite.Require().NoError(err)
+
+		categories := []domain.FeedCategory{
+			{Text: "Technology"},
+			{Text: "Education"},
+		}
+
+		var buf bytes.Buffer
+		err = tmpl.Execute(&buf, categories)
+		suite.Require().NoError(err)
+
+		suite.Equal("Technology, Education", buf.String())
+	})
+}
+
 // TestEpisodeDateFunction tests the tmplEpisodeDate function
 func (suite *TestTemplateFunctionsSuite) TestEpisodeDateFunction() {
 	suite.Run("valid date", func() {
