@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -10,35 +11,57 @@ import (
 	"github.com/ofstudio/voxify/internal/domain"
 )
 
-type EventHandlers struct {
+// RequestHandlers handles requests for downloading episodes and building feeds.
+type RequestHandlers struct {
 	cfg        config.Settings
 	log        *slog.Logger
 	bus        domain.EventBus
 	builder    domain.FeedBuilder
 	downloader domain.EpisodeDownloader
 	queue      chan domain.DownloadRequest
-	active     sync.Map // map[string]struct{} to track ongoing downloads by URL
+	active     sync.Map
+	wg         sync.WaitGroup
 }
 
-// NewEventHandlers creates a new EventHandlers handler instance.
-func NewEventHandlers(
+// NewRequestHandlers creates a new RequestHandlers handler instance.
+func NewRequestHandlers(
 	cfg config.Settings,
 	log *slog.Logger,
 	bus domain.EventBus,
-	b domain.FeedBuilder,
-	d domain.EpisodeDownloader,
-) *EventHandlers {
-	return &EventHandlers{
-		cfg:        cfg,
-		log:        log,
-		bus:        bus,
-		builder:    b,
-		downloader: d,
-		queue:      make(chan domain.DownloadRequest),
+) *RequestHandlers {
+	return &RequestHandlers{
+		cfg:   cfg,
+		log:   log,
+		bus:   bus,
+		queue: make(chan domain.DownloadRequest),
 	}
 }
 
-func (h *EventHandlers) Start(ctx context.Context) {
+// WithBuilder sets the FeedBuilder instance.
+func (h *RequestHandlers) WithBuilder(b domain.FeedBuilder) *RequestHandlers {
+	h.builder = b
+	return h
+}
+
+// WithDownloader sets the EpisodeDownloader instance.
+func (h *RequestHandlers) WithDownloader(d domain.EpisodeDownloader) *RequestHandlers {
+	h.downloader = d
+	return h
+}
+
+// Init initializes event handlers and starts workers.
+func (h *RequestHandlers) Init(ctx context.Context) error {
+	// check dependencies
+	if h.builder == nil {
+		return errors.New("feed builder is not set")
+	}
+	if h.downloader == nil {
+		return errors.New("episode downloader is not set")
+	}
+	if h.bus == nil {
+		return errors.New("event bus is not set")
+	}
+
 	// subscribe to events
 	h.bus.Subscribe(domain.DownloadRequestEvent, h.downloadHandler(ctx))
 	h.bus.Subscribe(domain.BuildRequestEvent, h.buildHandler(ctx))
@@ -53,12 +76,69 @@ func (h *EventHandlers) Start(ctx context.Context) {
 
 	// start workers
 	for i := 0; i < h.cfg.DownloadWorkers; i++ {
+		h.wg.Add(1)
 		go h.downloadWorker(ctx, i)
 	}
+	return nil
+}
+
+// Wait waits for all workers to finish.
+func (h *RequestHandlers) Wait() {
+	h.wg.Wait()
+}
+
+// downloadWorker processes download requests from the queue.
+func (h *RequestHandlers) downloadWorker(ctx context.Context, id int) {
+	h.log.Info("[request handlers] download worker started", "id", id)
+	defer h.log.Info("[request handlers] download worker stopped", "id", id)
+	defer h.wg.Done()
+
+	for {
+		select {
+		case req := <-h.queue:
+			h.download(ctx, req)
+		case <-ctx.Done():
+			return
+		}
+	}
+
+}
+
+// download processes a single episode download request.
+func (h *RequestHandlers) download(ctx context.Context, req domain.DownloadRequest) {
+	// mark URL as being downloaded
+	if _, exists := h.active.LoadOrStore(req.Url, struct{}{}); exists {
+		// already downloading
+		h.failRequest(req, domain.ErrDownloadInProgress)
+		return
+	}
+	defer h.active.Delete(req.Url)
+
+	// perform download
+	episode, err := h.downloader.Download(ctx, req)
+	if err != nil {
+		// check if context was cancelled
+		if ctx.Err() != nil {
+			err = fmt.Errorf("%w: %w; %w", domain.ErrDownloadInterrupted, ctx.Err(), err)
+		}
+
+		h.failRequest(req, err)
+		return
+	}
+
+	// publish success response
+	h.bus.Publish(domain.NewDownloadResponseEvent(domain.DownloadResponse{
+		Status:  domain.StatusSuccess,
+		Episode: episode,
+		Request: req,
+	}))
+
+	// publish build request
+	h.bus.Publish(domain.NewBuildRequestEvent(domain.BuildRequest{ID: req.ID}))
 }
 
 // downloadHandler returns event handler for handling episode download requests.
-func (h *EventHandlers) downloadHandler(ctx context.Context) domain.EventHandler {
+func (h *RequestHandlers) downloadHandler(ctx context.Context) domain.EventHandler {
 	return func(event domain.Event) {
 		req := event.Payload().(domain.DownloadRequest)
 
@@ -84,7 +164,7 @@ func (h *EventHandlers) downloadHandler(ctx context.Context) domain.EventHandler
 }
 
 // downloadValidate performs  validation of the download request.
-func (h *EventHandlers) downloadValidate(ctx context.Context, req domain.DownloadRequest) error {
+func (h *RequestHandlers) downloadValidate(ctx context.Context, req domain.DownloadRequest) error {
 	// check if URL is already being downloaded
 	if _, exists := h.active.Load(req.Url); exists {
 		return domain.ErrDownloadInProgress
@@ -97,49 +177,8 @@ func (h *EventHandlers) downloadValidate(ctx context.Context, req domain.Downloa
 
 }
 
-// downloadWorker processes download requests from the queue.
-func (h *EventHandlers) downloadWorker(ctx context.Context, id int) {
-	h.log.Info("[event handlers] download worker started", "id", id)
-	defer h.log.Info("[event handlers] download worker stopped", "id", id)
-
-	for {
-		select {
-		case req := <-h.queue:
-			h.download(ctx, req)
-		case <-ctx.Done():
-			return
-		}
-	}
-
-}
-
-// download processes a single episode download request.
-func (h *EventHandlers) download(ctx context.Context, req domain.DownloadRequest) {
-	// mark URL as being downloaded
-	if _, exists := h.active.LoadOrStore(req.Url, struct{}{}); exists {
-		// already downloading
-		h.failRequest(req, domain.ErrDownloadInProgress)
-		return
-	}
-	defer h.active.Delete(req.Url)
-
-	// perform download
-	episode, err := h.downloader.Download(ctx, req)
-	if err != nil {
-		h.failRequest(req, err)
-		return
-	}
-
-	// publish success response
-	h.bus.Publish(domain.NewDownloadResponseEvent(domain.DownloadResponse{
-		Status:  domain.StatusSuccess,
-		Episode: episode,
-		Request: req,
-	}))
-}
-
 // buildHandler returns event handler for handling feed build requests.
-func (h *EventHandlers) buildHandler(ctx context.Context) domain.EventHandler {
+func (h *RequestHandlers) buildHandler(ctx context.Context) domain.EventHandler {
 	return func(event domain.Event) {
 		req := event.Payload().(domain.BuildRequest)
 		if err := h.builder.Build(ctx); err != nil {
@@ -154,7 +193,7 @@ func (h *EventHandlers) buildHandler(ctx context.Context) domain.EventHandler {
 }
 
 // feedInfoHandler returns event handler for handling feed info requests.
-func (h *EventHandlers) feedInfoHandler(ctx context.Context) domain.EventHandler {
+func (h *RequestHandlers) feedInfoHandler(ctx context.Context) domain.EventHandler {
 	return func(event domain.Event) {
 		req := event.Payload().(domain.FeedInfoRequest)
 		info, err := h.builder.Info(ctx)
@@ -175,7 +214,7 @@ func (h *EventHandlers) feedInfoHandler(ctx context.Context) domain.EventHandler
 }
 
 // failRequest publishes a failed response event based on the request type.
-func (h *EventHandlers) failRequest(req any, err error) {
+func (h *RequestHandlers) failRequest(req any, err error) {
 	var event domain.Event
 	switch r := req.(type) {
 	case domain.DownloadRequest:
@@ -191,7 +230,7 @@ func (h *EventHandlers) failRequest(req any, err error) {
 			Request: r,
 		})
 	default:
-		h.log.Error("[event handlers] unknown request type", "req", req)
+		h.log.Error("[request handlers] unknown request type", "req", req)
 		return
 	}
 	h.bus.Publish(event)
@@ -200,37 +239,37 @@ func (h *EventHandlers) failRequest(req any, err error) {
 // logging handlers
 
 // logDownloadRequestHandler logs download request events.
-func (h *EventHandlers) logDownloadRequestHandler(event domain.Event) {
+func (h *RequestHandlers) logDownloadRequestHandler(event domain.Event) {
 	req := event.Payload().(domain.DownloadRequest)
-	h.log.Info("[event handlers] download request", "request", req)
+	h.log.Info("[request handlers] download request", "request", req)
 }
 
 // logDownloadResponseHandler logs download response events.
-func (h *EventHandlers) logDownloadResponseHandler(event domain.Event) {
+func (h *RequestHandlers) logDownloadResponseHandler(event domain.Event) {
 	resp := event.Payload().(domain.DownloadResponse)
-	h.log.Info("[event handlers] download response", "response", resp)
+	h.log.Info("[request handlers] download response", "response", resp)
 }
 
 // logBuildRequestHandler logs build request events.
-func (h *EventHandlers) logBuildRequestHandler(event domain.Event) {
+func (h *RequestHandlers) logBuildRequestHandler(event domain.Event) {
 	req := event.Payload().(domain.BuildRequest)
-	h.log.Info("[event handlers] build request", "request", req)
+	h.log.Info("[request handlers] build request", "request", req)
 }
 
 // logBuildResponseHandler logs build response events.
-func (h *EventHandlers) logBuildResponseHandler(event domain.Event) {
+func (h *RequestHandlers) logBuildResponseHandler(event domain.Event) {
 	resp := event.Payload().(domain.BuildResponse)
-	h.log.Info("[event handlers] build response", "response", resp)
+	h.log.Info("[request handlers] build response", "response", resp)
 }
 
 // logFeedInfoRequestHandler logs feed info request events.
-func (h *EventHandlers) logFeedInfoRequestHandler(event domain.Event) {
+func (h *RequestHandlers) logFeedInfoRequestHandler(event domain.Event) {
 	req := event.Payload().(domain.FeedInfoRequest)
-	h.log.Info("[event handlers] feed info request", "request", req)
+	h.log.Info("[request handlers] feed info request", "request", req)
 }
 
 // logFeedInfoResponseHandler logs feed info response events.
-func (h *EventHandlers) logFeedInfoResponseHandler(event domain.Event) {
+func (h *RequestHandlers) logFeedInfoResponseHandler(event domain.Event) {
 	resp := event.Payload().(domain.FeedInfoResponse)
-	h.log.Info("[event handlers] feed info response", "response", resp)
+	h.log.Info("[request handlers] feed info response", "response", resp)
 }
