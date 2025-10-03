@@ -40,8 +40,8 @@ func (suite *TestNotificationHandlersSuite) SetupTest() {
 	suite.bus = mocks.NewMockEventBus(suite.T())
 	suite.api = mocks.NewMockAPI(suite.T())
 
-	suite.handlers = NewNotificationHandlers(suite.log, suite.bus, suite.api)
-	// Manually set context because in these tests we call handler methods directly (without Start)
+	suite.handlers = NewNotificationHandlers(suite.log, suite.bus).WithAPI(suite.api)
+	// Manually set context because in these tests we call handler methods directly (without Init)
 	suite.handlers.ctx = suite.ctx
 }
 
@@ -66,11 +66,67 @@ func (suite *TestNotificationHandlersSuite) matchSendMessageParams(expectedChatI
 
 // Tests
 func (suite *TestNotificationHandlersSuite) TestNewNotificationHandlers() {
-	h := NewNotificationHandlers(suite.log, suite.bus, suite.api)
+	h := NewNotificationHandlers(suite.log, suite.bus)
 	suite.NotNil(h)
 	suite.Equal(suite.log, h.log)
 	suite.Equal(suite.bus, h.bus)
-	suite.Equal(suite.api, h.api)
+	suite.Nil(h.api) // api should be nil until WithAPI is called
+}
+
+func (suite *TestNotificationHandlersSuite) TestWithAPI() {
+	// Arrange
+	handlers := NewNotificationHandlers(suite.log, suite.bus)
+
+	// Act
+	result := handlers.WithAPI(suite.api)
+
+	// Assert
+	suite.Equal(handlers, result) // should return same instance for chaining
+	suite.Equal(suite.api, handlers.api)
+}
+
+func (suite *TestNotificationHandlersSuite) TestStart() {
+	suite.Run("ReturnsErrorWhenAPINotSet", func() {
+		// Arrange
+		handlers := NewNotificationHandlers(suite.log, suite.bus)
+
+		// Act
+		err := handlers.Init(suite.ctx)
+
+		// Assert
+		suite.Error(err)
+		suite.Contains(err.Error(), "telegram API is not set")
+	})
+
+	suite.Run("ReturnsErrorWhenEventBusNotSet", func() {
+		// Arrange
+		handlers := NewNotificationHandlers(suite.log, nil).WithAPI(suite.api)
+
+		// Act
+		err := handlers.Init(suite.ctx)
+
+		// Assert
+		suite.Error(err)
+		suite.Contains(err.Error(), "event bus is not set")
+	})
+
+	suite.Run("SubscribesHandlersSuccessfully", func() {
+		// Arrange
+		// Expect subscriptions for three response event types
+		suite.bus.EXPECT().Subscribe(domain.DownloadResponseEvent, mock.AnythingOfType("domain.EventHandler")).Return()
+		suite.bus.EXPECT().Subscribe(domain.BuildResponseEvent, mock.AnythingOfType("domain.EventHandler")).Return()
+		suite.bus.EXPECT().Subscribe(domain.FeedInfoResponseEvent, mock.AnythingOfType("domain.EventHandler")).Return()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		// Act
+		err := suite.handlers.Init(ctx)
+
+		// Assert
+		suite.NoError(err)
+		suite.bus.AssertExpectations(suite.T())
+	})
 }
 
 func (suite *TestNotificationHandlersSuite) TestStartSubscribesHandlers() {
@@ -83,7 +139,7 @@ func (suite *TestNotificationHandlersSuite) TestStartSubscribesHandlers() {
 	defer cancel()
 
 	// Act
-	suite.handlers.Start(ctx)
+	suite.NoError(suite.handlers.Init(ctx))
 
 	// Assert
 	suite.bus.AssertExpectations(suite.T())

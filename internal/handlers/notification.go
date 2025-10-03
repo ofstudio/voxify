@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"strings"
 
@@ -20,17 +21,32 @@ type NotificationHandlers struct {
 	api telegram.API
 }
 
-func NewNotificationHandlers(log *slog.Logger, bus domain.EventBus, api telegram.API) *NotificationHandlers {
-	return &NotificationHandlers{log: log, bus: bus, api: api}
+func NewNotificationHandlers(log *slog.Logger, bus domain.EventBus) *NotificationHandlers {
+	return &NotificationHandlers{log: log, bus: bus}
 }
 
-// Start initializes the notification handlers.
-func (h *NotificationHandlers) Start(cxt context.Context) {
+// WithAPI sets the API for sending messages.
+func (h *NotificationHandlers) WithAPI(api telegram.API) *NotificationHandlers {
+	h.api = api
+	return h
+}
+
+// Init initializes the notification handlers.
+func (h *NotificationHandlers) Init(cxt context.Context) error {
+	// check dependencies
+	if h.api == nil {
+		return errors.New("telegram API is not set")
+	}
+	if h.bus == nil {
+		return errors.New("event bus is not set")
+	}
+
 	// subscribe to events
 	h.ctx = cxt
 	h.bus.Subscribe(domain.DownloadResponseEvent, h.downloadNotificationHandler)
 	h.bus.Subscribe(domain.BuildResponseEvent, h.buildNotificationHandler)
 	h.bus.Subscribe(domain.FeedInfoResponseEvent, h.feedInfoNotificationHandler)
+	return nil
 }
 
 // downloadNotificationHandler handles download response events and sends notifications.
