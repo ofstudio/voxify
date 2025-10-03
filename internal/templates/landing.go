@@ -369,7 +369,6 @@ const landingTemplateHTML =
             <h2 id="episodes-title" style="position:absolute; left:-9999px;">Latest episodes</h2>
             <div class="episodes">
                 {{ range $i, $e := .Episodes }}
-                    {{ if lt $i 10 }}
                         <a class="card" href="{{ episodeURL $e }}" target="_blank" rel="noopener">
                             <div class="thumb">{{if $e.ThumbnailFile}}<img src="{{ $e.ThumbnailFile }}" alt="Episode artwork">{{end}}</div>
                             <div>
@@ -380,7 +379,6 @@ const landingTemplateHTML =
                                 </div>
                             </div>
                         </a>
-                    {{ end }}
                 {{ end }}
             </div>
         {{ end }}

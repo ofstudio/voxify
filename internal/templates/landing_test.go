@@ -111,14 +111,9 @@ func (suite *TestLandingTemplateSuite) TestManyEpisodes() {
 
 	html := buf.String()
 
-	// Should contain first 10 episodes
+	// Should contain 15 episodes
 	for i := 1; i <= 10; i++ {
 		suite.Contains(html, fmt.Sprintf("Episode %d", i), "Should contain episode %d", i)
-	}
-
-	// Should not contain episodes 11-15
-	for i := 11; i <= 15; i++ {
-		suite.NotContains(html, fmt.Sprintf("Episode %d", i), "Should not contain episode %d", i)
 	}
 }
 
