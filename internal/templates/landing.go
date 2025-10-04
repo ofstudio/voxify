@@ -103,7 +103,6 @@ const landingTemplateHTML =
             border-radius: 16px;
             overflow: hidden;
             box-shadow: var(--shadow-1);
-            background: #ddd;
         }
 
         .cover img {
