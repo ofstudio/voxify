@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v1.0.1] - 2025-10-04
+
+### Fixed
+
+- Thread-safety issue with global `rand.Source` in token generation. Resolves [#7].
+- HTML formatting injections in Telegram messages by properly escaping user input. Resolves [#10].
+
 ## [v1.0.0] - 2025-10-03
 
 ### Added
@@ -50,7 +57,9 @@ Initial public release (tagged `v0.0.1`).
 
 ---
 
-[Unreleased]: https://github.com/ofstudio/voxify/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/ofstudio/voxify/compare/v1.0.1...HEAD
+
+[v1.0.1]: https://github.com/ofstudio/voxify/compare/v1.0.0...v1.0.1
 
 [v1.0.0]: https://github.com/ofstudio/voxify/compare/v0.1.0...v1.0.0
 
@@ -58,8 +67,12 @@ Initial public release (tagged `v0.0.1`).
 
 [v0.0.1]: https://github.com/ofstudio/voxify/releases/tag/v0.0.1
 
-[#6]: https://github.com/ofstudio/voxify/issues/6
+[#4]: https://github.com/ofstudio/voxify/issues/4
 
 [#5]: https://github.com/ofstudio/voxify/issues/5
 
-[#4]: https://github.com/ofstudio/voxify/issues/4
+[#6]: https://github.com/ofstudio/voxify/issues/6
+
+[#7]: https://github.com/ofstudio/voxify/issues/7
+
+[#10]: https://github.com/ofstudio/voxify/issues/10
