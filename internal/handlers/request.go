@@ -66,7 +66,8 @@ func (h *RequestHandlers) Init(ctx context.Context) error {
 	h.bus.Subscribe(domain.DownloadRequestEvent, h.downloadHandler(ctx))
 	h.bus.Subscribe(domain.BuildRequestEvent, h.buildHandler(ctx))
 	h.bus.Subscribe(domain.FeedInfoRequestEvent, h.feedInfoHandler(ctx))
-	// logging handlers
+
+	// subscribe logging handlers
 	h.bus.Subscribe(domain.DownloadRequestEvent, h.logDownloadRequestHandler)
 	h.bus.Subscribe(domain.DownloadResponseEvent, h.logDownloadResponseHandler)
 	h.bus.Subscribe(domain.BuildRequestEvent, h.logBuildRequestHandler)
@@ -74,11 +75,21 @@ func (h *RequestHandlers) Init(ctx context.Context) error {
 	h.bus.Subscribe(domain.FeedInfoRequestEvent, h.logFeedInfoRequestHandler)
 	h.bus.Subscribe(domain.FeedInfoResponseEvent, h.logFeedInfoResponseHandler)
 
-	// start workers
+	// channel to synchronize worker startup
+	ready := make(chan struct{})
+
+	// start download workers
 	for i := 0; i < h.cfg.DownloadWorkers; i++ {
 		h.wg.Add(1)
-		go h.downloadWorker(ctx, i)
+		go h.downloadWorker(ctx, i, ready)
 	}
+
+	// wait until all workers signal they are ready
+	for i := 0; i < h.cfg.DownloadWorkers; i++ {
+		<-ready
+	}
+	close(ready)
+
 	return nil
 }
 
@@ -88,10 +99,13 @@ func (h *RequestHandlers) Wait() {
 }
 
 // downloadWorker processes download requests from the queue.
-func (h *RequestHandlers) downloadWorker(ctx context.Context, id int) {
+func (h *RequestHandlers) downloadWorker(ctx context.Context, id int, ready chan<- struct{}) {
 	h.log.Info("[request handlers] download worker started", "id", id)
 	defer h.log.Info("[request handlers] download worker stopped", "id", id)
 	defer h.wg.Done()
+
+	// signal that the worker is ready to process requests
+	ready <- struct{}{}
 
 	for {
 		select {
@@ -101,7 +115,6 @@ func (h *RequestHandlers) downloadWorker(ctx context.Context, id int) {
 			return
 		}
 	}
-
 }
 
 // download processes a single episode download request.
