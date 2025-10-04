@@ -248,28 +248,33 @@ func (suite *TestRequestHandlersSuite) TestDownloadHandler() {
 		// Start a goroutine to consume from the queue (simulating a worker)
 		receivedReq := make(chan domain.DownloadRequest, 1)
 		consumerReady := make(chan struct{})
+		producerSent := make(chan struct{})
 		go func() {
-			close(consumerReady) // Signal that we're ready to receive
+			close(consumerReady) // Signal that consumer is ready
 			select {
 			case r := <-suite.handlers.queue:
 				receivedReq <- r
-			case <-time.After(200 * time.Millisecond):
+			case <-time.After(time.Second):
 				// Timeout - nothing was sent to queue
 			}
 		}()
 
-		// Wait for consumer to be ready
-		<-consumerReady
+		// Act - call handler in goroutine to avoid blocking on unbuffered channel
+		go func() {
+			<-consumerReady                    // Wait for consumer to be ready
+			time.Sleep(200 * time.Millisecond) // Ensure consumer is waiting
+			handler(event)
+			close(producerSent) // Signal that producer has sent the request
+		}()
 
-		// Act
-		handler(event)
+		<-producerSent // Wait for producer to finish
 
 		// Assert - verify the request was successfully enqueued
 		select {
 		case r := <-receivedReq:
 			suite.Equal(req.ID, r.ID, "Request should be enqueued with correct ID")
 			suite.Equal(req.Url, r.Url, "Request should be enqueued with correct URL")
-		case <-time.After(200 * time.Millisecond):
+		case <-time.After(time.Second):
 			suite.Fail("Request was not enqueued - timeout waiting for request in queue")
 		}
 
