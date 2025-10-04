@@ -3,6 +3,7 @@ package templates
 import (
 	"errors"
 	"fmt"
+	"html"
 
 	"github.com/ofstudio/voxify/internal/domain"
 )
@@ -45,7 +46,7 @@ Perfect for creating your own podcast collection or listening to content offline
 
 // MsgDownloadSuccess formats the download success message with the episode title.
 func MsgDownloadSuccess(episodeTitle string) string {
-	return fmt.Sprintf(msgDownloadSuccess, episodeTitle)
+	return fmt.Sprintf(msgDownloadSuccess, html.EscapeString(episodeTitle))
 }
 
 // MsgError maps an error to a user-friendly message.
