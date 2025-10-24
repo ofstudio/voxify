@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v1.0.2] - 2025-10-24
+
+### Changed
+
+- Updated `yt-dlp` to version `2025.10.22`.
+
 ## [v1.0.1] - 2025-10-04
 
 ### Fixed
@@ -57,7 +63,9 @@ Initial public release (tagged `v0.0.1`).
 
 ---
 
-[Unreleased]: https://github.com/ofstudio/voxify/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/ofstudio/voxify/compare/v1.0.2...HEAD
+
+[v1.0.2]: https://github.com/ofstudio/voxify/compare/v1.0.1...v1.0.2
 
 [v1.0.1]: https://github.com/ofstudio/voxify/compare/v1.0.0...v1.0.1
 
