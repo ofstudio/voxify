@@ -6,6 +6,7 @@ assets
 .run
 .env*
 .DS_Store
+.gocache
 .dockerignore
 .gitignore
 .mockery.yaml
