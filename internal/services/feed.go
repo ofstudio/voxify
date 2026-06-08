@@ -198,17 +198,24 @@ func (s *FeedService) createItem(episode *domain.Episode) *feedcast.Item {
 // saveFeed writes the RSS FeedInfo to the configured file path.
 func (s *FeedService) saveFeed(feed *feedcast.Feed) error {
 
-	// Create or overwrite feed file
-	file, err := os.Create(filepath.Join(s.cfg.PublicDir, s.cfg.FeedFileName))
+	feedPath := filepath.Join(s.cfg.PublicDir, s.cfg.FeedFileName)
+	file, tmpPath, err := s.createTempFile(feedPath)
 	if err != nil {
 		return fmt.Errorf("failed to create feed file: %w", err)
 	}
 	//goland:noinspection GoUnhandledErrorResult
-	defer file.Close()
+	defer os.Remove(tmpPath)
 
 	// Write RSS feed to file
 	if err = feed.Encode(file); err != nil {
+		_ = file.Close()
 		return fmt.Errorf("failed to encode feed to file: %w", err)
+	}
+	if err = file.Close(); err != nil {
+		return fmt.Errorf("failed to close feed file: %w", err)
+	}
+	if err = os.Rename(tmpPath, feedPath); err != nil {
+		return fmt.Errorf("failed to replace feed file: %w", err)
 	}
 
 	return nil
@@ -273,19 +280,34 @@ func (s *FeedService) buildLanding(ctx context.Context, episodes []*domain.Episo
 		Episodes: episodes,
 	}
 
-	// Create or overwrite landing page file
-	file, err := os.Create(filepath.Join(s.cfg.PublicDir, "index.html"))
+	landingPath := filepath.Join(s.cfg.PublicDir, "index.html")
+	file, tmpPath, err := s.createTempFile(landingPath)
 	if err != nil {
 		return fmt.Errorf("failed to create landing page file: %w", err)
 	}
 	//goland:noinspection GoUnhandledErrorResult
-	defer file.Close()
+	defer os.Remove(tmpPath)
 
 	// Execute template and write to file
 	if err = templates.LandingTemplate.Execute(file, data); err != nil {
+		_ = file.Close()
 		return fmt.Errorf("failed to execute landing page template: %w", err)
+	}
+	if err = file.Close(); err != nil {
+		return fmt.Errorf("failed to close landing page file: %w", err)
+	}
+	if err = os.Rename(tmpPath, landingPath); err != nil {
+		return fmt.Errorf("failed to replace landing page file: %w", err)
 	}
 
 	s.log.Info("[feed service] landing page built", "episodes_count", len(episodes))
 	return nil
+}
+
+func (s *FeedService) createTempFile(path string) (*os.File, string, error) {
+	file, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+".*")
+	if err != nil {
+		return nil, "", err
+	}
+	return file, file.Name(), nil
 }

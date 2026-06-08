@@ -392,11 +392,20 @@ func (suite *TestEpisodeServiceSuite) TestDownload() {
 	suite.Run("StoreCreateFails", func() {
 		// Arrange
 		storeErr := errors.New("store create error")
+		episode := &domain.Episode{
+			Title:         "Test Episode",
+			MediaFile:     "store-fail.mp3",
+			ThumbnailFile: "store-fail.jpg",
+			OriginalURL:   req.Url,
+		}
+		suite.Require().NoError(os.WriteFile(suite.publicFile(episode.MediaFile), []byte("media"), 0644))
+		suite.Require().NoError(os.WriteFile(suite.publicFile(episode.ThumbnailFile), []byte("thumb"), 0644))
+
 		suite.mockStore.On("EpisodeGetByUrl", suite.ctx, req.Url).Return([]*domain.Episode{}, nil)
 		suite.mockPlatform.On("ID").Return("test-platform")
 		suite.mockPlatform.On("Match", req).Return(true)
 		suite.mockPlatform.On("Download", mock.AnythingOfType("*context.timerCtx"), req).
-			Return(&domain.Episode{Title: "Test Episode", MediaFile: "audio_test.mp3", OriginalURL: req.Url}, nil)
+			Return(episode, nil)
 		suite.mockStore.On("EpisodeCreate", suite.ctx, mock.AnythingOfType("*domain.Episode")).
 			Return(storeErr)
 
@@ -408,6 +417,8 @@ func (suite *TestEpisodeServiceSuite) TestDownload() {
 		suite.Nil(result)
 		suite.True(errors.Is(err, storeErr))
 		suite.Contains(err.Error(), storeErr.Error())
+		suite.NoFileExists(suite.publicFile(episode.MediaFile))
+		suite.NoFileExists(suite.publicFile(episode.ThumbnailFile))
 	})
 
 	suite.Run("ContextTimeout", func() {
@@ -551,13 +562,12 @@ func (suite *TestEpisodeServiceSuite) TestEnforceFeedMaxEpisodes() {
 		suite.True(errors.Is(err, expectedErr))
 	})
 
-	suite.Run("DeleteFileError", func() {
+	suite.Run("DeleteFileErrorSkipsStoreDelete", func() {
 		// Arrange
 		suite.service.cfg.FeedMaxEpisodes = 1
 		oldEpisode := &domain.Episode{ID: 1, MediaFile: "../unsafe.mp3"}
 		suite.mockStore.On("EpisodeCount", suite.ctx).Return(2, nil)
 		suite.mockStore.On("EpisodeGetOldest", suite.ctx, 1).Return([]*domain.Episode{oldEpisode}, nil)
-		suite.mockStore.On("EpisodeDelete", suite.ctx, oldEpisode.ID).Return(nil)
 
 		// Act
 		err := suite.service.enforceFeedMaxEpisodes(suite.ctx)

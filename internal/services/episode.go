@@ -101,6 +101,10 @@ func (s *EpisodeService) Download(ctx context.Context, req domain.DownloadReques
 
 	// Save Episode to store
 	if err = s.store.EpisodeCreate(ctx, episode); err != nil {
+		if cleanupErr := s.deleteEpisodeFiles(episode); cleanupErr != nil {
+			s.log.Error("[episode service] failed to cleanup episode files",
+				"error", cleanupErr.Error(), "episode", episode.LogValue())
+		}
 		return nil, fmt.Errorf("failed to create episode: %w", err)
 	}
 
@@ -139,11 +143,13 @@ func (s *EpisodeService) enforceFeedMaxEpisodes(ctx context.Context) error {
 	}
 
 	for _, episode := range episodes {
-		if err = s.store.EpisodeDelete(ctx, episode.ID); err != nil {
-			return fmt.Errorf("failed to delete episode: %w", err)
-		}
 		if err = s.deleteEpisodeFiles(episode); err != nil {
 			return fmt.Errorf("failed to delete episode files: %w", err)
+		}
+		if err = s.store.EpisodeDelete(ctx, episode.ID); err != nil {
+			s.log.Error("[episode service] failed to delete old episode record",
+				"error", err.Error(), "episode", episode.LogValue())
+			return fmt.Errorf("failed to delete episode: %w", err)
 		}
 		s.log.Info("[episode service] old episode deleted",
 			"feed_max_episodes", s.cfg.FeedMaxEpisodes, "episode", episode.LogValue())

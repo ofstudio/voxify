@@ -226,6 +226,38 @@ func (suite *TestFeedServiceSuite) TestBuild() {
 		suite.Contains(err.Error(), "failed to create landing page file")
 	})
 
+	suite.Run("Error_RssBuildKeepsExistingFeed", func() {
+		// Arrange
+		feedPath := filepath.Join(suite.cfg.PublicDir, suite.cfg.FeedFileName)
+		oldContent := []byte("existing feed")
+		suite.Require().NoError(os.WriteFile(feedPath, oldContent, 0644))
+
+		episodes := []*domain.Episode{
+			{
+				ID:            1,
+				OriginalURL:   "https://example.com/episode1",
+				Title:         "Test Episode 1",
+				Description:   "Description 1",
+				CanonicalURL:  "https://example.com/episode1",
+				CreatedAt:     time.Now(),
+				MediaFile:     "episode1.mp3",
+				MediaSize:     0,
+				MediaType:     "audio/mpeg",
+				MediaDuration: 3600,
+			},
+		}
+		suite.mockStore.On("EpisodeGet", suite.ctx, 0, 0).Return(episodes, nil)
+
+		// Act
+		err := suite.service.Build(suite.ctx)
+
+		// Assert
+		suite.Error(err)
+		content, readErr := os.ReadFile(feedPath)
+		suite.NoError(readErr)
+		suite.Equal(oldContent, content)
+	})
+
 	suite.Run("Error_ContextCancelled", func() {
 		// Arrange
 		cancelledCtx, cancel := context.WithCancel(suite.ctx)

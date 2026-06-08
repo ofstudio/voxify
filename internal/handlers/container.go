@@ -54,8 +54,7 @@ func (c *Container) Init(ctx context.Context) error {
 		return fmt.Errorf("failed to start telegram handlers: %w", err)
 	}
 
-	// start notification handlers in a separate context
-	if err := c.Notification.Init(context.Background()); err != nil {
+	if err := c.Notification.Init(ctx); err != nil {
 		return fmt.Errorf("failed to start notification handlers: %w", err)
 	}
 
