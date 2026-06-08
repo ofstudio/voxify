@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - When the feed episode limit is exceeded, Voxify permanently deletes the oldest episode records and associated media/thumbnail files on startup and after new downloads.
 - Documented that generated RSS, landing page and media files are public by design.
 - RSS feed and landing page files are now replaced atomically.
+- The `/info` command now shows the configured maximum episode count when `FEED_MAX_EPISODES` is set.
 
 ## [v1.0.3] - 2026-02-18
 

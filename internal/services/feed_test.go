@@ -419,6 +419,7 @@ func (suite *TestFeedServiceSuite) TestBuild_EdgeCases() {
 func (suite *TestFeedServiceSuite) TestInfo() {
 	suite.Run("WithEpisodes", func() {
 		// Arrange
+		suite.service.cfg.FeedMaxEpisodes = 50
 		now := time.Now().UTC()
 		recentEpisode := []*domain.Episode{
 			{
@@ -437,6 +438,7 @@ func (suite *TestFeedServiceSuite) TestInfo() {
 		// Assert
 		suite.Require().NoError(err)
 		suite.Equal(2, feed.EpisodeCount)
+		suite.Equal(50, feed.FeedMaxEpisodes)
 		suite.True(feed.PubDate.Equal(now))
 		suite.Equal(suite.cfg.FeedTitle, feed.Title)
 		suite.Equal(suite.cfg.FeedDescription, feed.Description)

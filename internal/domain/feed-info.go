@@ -8,25 +8,26 @@ import (
 
 // FeedInfo contains information about podcast feed
 type FeedInfo struct {
-	Title         string         // Show title
-	Description   string         // Show description
-	Summary       string         // Show summary
-	Language      string         // Lang code
-	Categories    []FeedCategory // Podcast categories
-	Keywords      string         // Podcast keywords comma separated
-	Author        string         // Podcast author name
-	Owner         *FeedOwner     // Podcast owner info
-	Copyright     string         // Show copyright info if any
-	Explicit      bool           // Is the show explicit
-	FeedType      FeedType       // The type of the show
-	FeedCompleted bool           // Is the show completed
-	FeedBlocked   bool           // Is the show blocked in Apple Podcasts
-	WebsiteLink   string         // Website link
-	RSSLink       string         // RSS feed link
-	ImageUrl      string         // Cover image link
-	Generator     string         // RSS generator software
-	PubDate       time.Time      // Last published date. Zero time if no episodes
-	EpisodeCount  int            // Number of episodes in the feed
+	Title           string         // Show title
+	Description     string         // Show description
+	Summary         string         // Show summary
+	Language        string         // Lang code
+	Categories      []FeedCategory // Podcast categories
+	Keywords        string         // Podcast keywords comma separated
+	Author          string         // Podcast author name
+	Owner           *FeedOwner     // Podcast owner info
+	Copyright       string         // Show copyright info if any
+	Explicit        bool           // Is the show explicit
+	FeedType        FeedType       // The type of the show
+	FeedCompleted   bool           // Is the show completed
+	FeedBlocked     bool           // Is the show blocked in Apple Podcasts
+	WebsiteLink     string         // Website link
+	RSSLink         string         // RSS feed link
+	ImageUrl        string         // Cover image link
+	Generator       string         // RSS generator software
+	PubDate         time.Time      // Last published date. Zero time if no episodes
+	EpisodeCount    int            // Number of episodes in the feed
+	FeedMaxEpisodes int            // Maximum number of episodes in the feed (0 means no limit)
 }
 
 // FeedOwner contains information about podcast owner

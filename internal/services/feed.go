@@ -94,25 +94,26 @@ func (s *FeedService) Info(ctx context.Context) (*domain.FeedInfo, error) {
 
 func (s *FeedService) feedInfo(episodeCount int, pubDate time.Time) *domain.FeedInfo {
 	return &domain.FeedInfo{
-		Title:         s.cfg.FeedTitle,
-		Description:   s.cfg.FeedDescription,
-		Summary:       s.cfg.FeedDescription, // For now, using description as summary
-		Language:      s.cfg.FeedLanguage,
-		Categories:    s.getCategories(),
-		Keywords:      s.cfg.FeedKeywords,
-		Author:        s.cfg.FeedAuthor,
-		Owner:         nil, // Owner not implemented yet
-		Copyright:     "",  // Copyright not implemented yet
-		Explicit:      s.cfg.FeedIsExplicit,
-		FeedType:      domain.FeedTypeNotSet, // Feed type not implemented yet
-		FeedCompleted: false,                 // Feed completed feature not implemented yet
-		FeedBlocked:   false,                 // Feed blocked feature not implemented yet
-		WebsiteLink:   s.cfg.FeedLink,
-		RSSLink:       s.cfg.PublicUrl.JoinPath(s.cfg.FeedFileName).String(),
-		ImageUrl:      s.cfg.FeedImage,
-		Generator:     s.getGenerator(),
-		PubDate:       pubDate, // Zero time if no episodes
-		EpisodeCount:  episodeCount,
+		Title:           s.cfg.FeedTitle,
+		Description:     s.cfg.FeedDescription,
+		Summary:         s.cfg.FeedDescription, // For now, using description as summary
+		Language:        s.cfg.FeedLanguage,
+		Categories:      s.getCategories(),
+		Keywords:        s.cfg.FeedKeywords,
+		Author:          s.cfg.FeedAuthor,
+		Owner:           nil, // Owner not implemented yet
+		Copyright:       "",  // Copyright not implemented yet
+		Explicit:        s.cfg.FeedIsExplicit,
+		FeedType:        domain.FeedTypeNotSet, // Feed type not implemented yet
+		FeedCompleted:   false,                 // Feed completed feature not implemented yet
+		FeedBlocked:     false,                 // Feed blocked feature not implemented yet
+		WebsiteLink:     s.cfg.FeedLink,
+		RSSLink:         s.cfg.PublicUrl.JoinPath(s.cfg.FeedFileName).String(),
+		ImageUrl:        s.cfg.FeedImage,
+		Generator:       s.getGenerator(),
+		PubDate:         pubDate, // Zero time if no episodes
+		EpisodeCount:    episodeCount,
+		FeedMaxEpisodes: s.cfg.FeedMaxEpisodes,
 	}
 }
 

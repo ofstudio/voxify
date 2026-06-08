@@ -46,6 +46,22 @@ func (suite *TestFeedInfoTemplateSuite) TestFeedInfoTemplateGeneration() {
 	suite.Contains(html, "🎧 Number of episodes: 5")
 }
 
+func (suite *TestFeedInfoTemplateSuite) TestFeedInfoTemplateWithMaxEpisodes() {
+	data := domain.FeedInfo{
+		Title:           "Limited Podcast",
+		EpisodeCount:    43,
+		FeedMaxEpisodes: 50,
+		RSSLink:         "https://example.com/rss.xml",
+	}
+
+	var buf bytes.Buffer
+	err := suite.template.Execute(&buf, data)
+	suite.Require().NoError(err)
+
+	html := buf.String()
+	suite.Contains(html, "🎧 Number of episodes: 43 (max: 50)")
+}
+
 // TestFeedInfoTemplateWithEmptyFields checks optional parts are omitted
 func (suite *TestFeedInfoTemplateSuite) TestFeedInfoTemplateWithEmptyFields() {
 	data := domain.FeedInfo{
@@ -107,6 +123,7 @@ func (suite *TestFeedInfoTemplateSuite) TestFeedInfoTemplateWithFullFields() {
 	suite.Contains(html, "<a href=\"https://example.com/cover.jpg\">Artwork</a>")
 	suite.Contains(html, "<a href=\"https://example.com\">Website</a>")
 	suite.Contains(html, "🎧 Number of episodes: 3")
+	suite.NotContains(html, "(max:")
 	suite.Contains(html, "🔞 Explicit content")
 
 	// Categories are flattened by categoriesList; ensure main and subcategory appear
