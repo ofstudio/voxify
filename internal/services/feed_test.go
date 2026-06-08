@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"html/template"
 	"log/slog"
 	"net/url"
 	"os"
@@ -69,6 +70,8 @@ func (suite *TestFeedServiceSuite) TearDownSuite() {
 
 // SetupSubTest is called before each subtest
 func (suite *TestFeedServiceSuite) SetupSubTest() {
+	suite.Require().NoError(os.RemoveAll(suite.tempDir))
+	suite.Require().NoError(os.MkdirAll(suite.tempDir, 0755))
 	suite.mockStore = mocks.NewMockStore(suite.T())
 	suite.service = NewFeedService(*suite.cfg, suite.log, suite.mockStore)
 	suite.NoError(templates.Init(suite.ctx))
@@ -222,7 +225,7 @@ func (suite *TestFeedServiceSuite) TestBuild() {
 		// Assert
 		suite.Error(err)
 		// Error should be wrapped with domain.ErrBuildFeedFailed and include save/create failure
-		suite.Contains(err.Error(), "ailed to build landing page")
+		suite.Contains(err.Error(), "failed to build landing page")
 		suite.Contains(err.Error(), "failed to create landing page file")
 	})
 
@@ -254,6 +257,30 @@ func (suite *TestFeedServiceSuite) TestBuild() {
 		// Assert
 		suite.Error(err)
 		content, readErr := os.ReadFile(feedPath)
+		suite.NoError(readErr)
+		suite.Equal(oldContent, content)
+	})
+
+	suite.Run("Error_LandingBuildKeepsExistingPage", func() {
+		// Arrange
+		landingPath := filepath.Join(suite.cfg.PublicDir, "index.html")
+		oldContent := []byte("existing landing")
+		suite.Require().NoError(os.WriteFile(landingPath, oldContent, 0644))
+
+		originalTemplate := templates.LandingTemplate
+		defer func() { templates.LandingTemplate = originalTemplate }()
+		templates.LandingTemplate = template.Must(template.New("broken").
+			Option("missingkey=error").
+			Parse(`{{.Missing}}`))
+
+		suite.mockStore.On("EpisodeGet", suite.ctx, 0, 0).Return([]*domain.Episode{}, nil)
+
+		// Act
+		err := suite.service.Build(suite.ctx)
+
+		// Assert
+		suite.Error(err)
+		content, readErr := os.ReadFile(landingPath)
 		suite.NoError(readErr)
 		suite.Equal(oldContent, content)
 	})
@@ -365,7 +392,7 @@ func (suite *TestFeedServiceSuite) TestBuild_EdgeCases() {
 				CreatedAt:     now,
 				MediaFile:     "episode2.m4a",
 				MediaSize:     512000,
-				MediaType:     "audio/mpeg",
+				MediaType:     domain.MediaM4a,
 				MediaDuration: 1800,
 			},
 		}
@@ -381,6 +408,10 @@ func (suite *TestFeedServiceSuite) TestBuild_EdgeCases() {
 		// Verify feed file was created
 		feedPath := filepath.Join(suite.cfg.PublicDir, suite.cfg.FeedFileName)
 		suite.FileExists(feedPath)
+		content, err := os.ReadFile(feedPath)
+		suite.NoError(err)
+		suite.Contains(string(content), `type="audio/mpeg"`)
+		suite.Contains(string(content), `type="audio/x-m4a"`)
 	})
 }
 

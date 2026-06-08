@@ -67,6 +67,11 @@ func (suite *TestEpisodeServiceSuite) TearDownSuite() {
 
 // SetupSubTest is called before each subtest in the suite
 func (suite *TestEpisodeServiceSuite) SetupSubTest() {
+	suite.Require().NoError(os.RemoveAll(suite.tempDir))
+	suite.Require().NoError(os.MkdirAll(suite.tempDir, 0755))
+	suite.Require().NoError(os.RemoveAll(suite.publicDir))
+	suite.Require().NoError(os.MkdirAll(suite.publicDir, 0755))
+
 	suite.mockStore = mocks.NewMockStore(suite.T())
 	suite.mockPlatform = mocks.NewMockPlatform(suite.T())
 
@@ -575,6 +580,35 @@ func (suite *TestEpisodeServiceSuite) TestEnforceFeedMaxEpisodes() {
 		// Assert
 		suite.Error(err)
 		suite.Contains(err.Error(), "unsafe public file path")
+	})
+
+	suite.Run("StoreDeleteErrorAfterFilesDeleted", func() {
+		// Arrange
+		storeErr := errors.New("delete failed")
+		suite.service.cfg.FeedMaxEpisodes = 1
+		oldEpisode := &domain.Episode{
+			ID:            1,
+			MediaFile:     "delete-store-error.mp3",
+			ThumbnailFile: "delete-store-error.jpg",
+		}
+		suite.Require().NoError(os.WriteFile(suite.publicFile(oldEpisode.MediaFile), []byte("media"), 0644))
+		suite.Require().NoError(os.WriteFile(suite.publicFile(oldEpisode.ThumbnailFile), []byte("thumb"), 0644))
+
+		suite.mockStore.On("EpisodeCount", suite.ctx).Return(2, nil)
+		suite.mockStore.On("EpisodeGetOldest", suite.ctx, 1).Return([]*domain.Episode{oldEpisode}, nil)
+		suite.mockStore.On("EpisodeDelete", suite.ctx, oldEpisode.ID).Return(storeErr).Run(func(args mock.Arguments) {
+			suite.NoFileExists(suite.publicFile(oldEpisode.MediaFile))
+			suite.NoFileExists(suite.publicFile(oldEpisode.ThumbnailFile))
+		})
+
+		// Act
+		err := suite.service.enforceFeedMaxEpisodes(suite.ctx)
+
+		// Assert
+		suite.Error(err)
+		suite.True(errors.Is(err, storeErr))
+		suite.NoFileExists(suite.publicFile(oldEpisode.MediaFile))
+		suite.NoFileExists(suite.publicFile(oldEpisode.ThumbnailFile))
 	})
 }
 
