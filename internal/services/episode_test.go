@@ -92,12 +92,39 @@ func (suite *TestEpisodeServiceSuite) TestInit() {
 	suite.Run("Success", func() {
 		// Arrange
 		suite.mockPlatform.On("Init", suite.ctx).Return(nil)
+		suite.mockStore.On("EpisodeCount", suite.ctx).Return(0, nil)
 
 		// Act
 		err := suite.service.Init(suite.ctx)
 
 		// Assert
 		suite.NoError(err)
+	})
+
+	suite.Run("FeedLimitDeletesOldEpisodes", func() {
+		// Arrange
+		suite.service.cfg.FeedMaxEpisodes = 1
+		oldEpisode := &domain.Episode{
+			ID:            1,
+			MediaFile:     "old.mp3",
+			ThumbnailFile: "old.jpg",
+			OriginalURL:   "https://example.com/old",
+		}
+		suite.Require().NoError(os.WriteFile(suite.publicFile(oldEpisode.MediaFile), []byte("media"), 0644))
+		suite.Require().NoError(os.WriteFile(suite.publicFile(oldEpisode.ThumbnailFile), []byte("thumb"), 0644))
+
+		suite.mockPlatform.On("Init", suite.ctx).Return(nil)
+		suite.mockStore.On("EpisodeCount", suite.ctx).Return(2, nil)
+		suite.mockStore.On("EpisodeGetOldest", suite.ctx, 1).Return([]*domain.Episode{oldEpisode}, nil)
+		suite.mockStore.On("EpisodeDelete", suite.ctx, oldEpisode.ID).Return(nil)
+
+		// Act
+		err := suite.service.Init(suite.ctx)
+
+		// Assert
+		suite.NoError(err)
+		suite.NoFileExists(suite.publicFile(oldEpisode.MediaFile))
+		suite.NoFileExists(suite.publicFile(oldEpisode.ThumbnailFile))
 	})
 
 	suite.Run("PlatformInitFails", func() {
@@ -269,6 +296,7 @@ func (suite *TestEpisodeServiceSuite) TestDownload() {
 			episode := args.Get(1).(*domain.Episode)
 			episode.ID = 1
 		})
+		suite.mockStore.On("EpisodeCount", suite.ctx).Return(1, nil)
 
 		// Act
 		result, err := suite.service.Download(suite.ctx, req)
@@ -285,6 +313,47 @@ func (suite *TestEpisodeServiceSuite) TestDownload() {
 		suite.Equal(int64(1024000), result.MediaSize)
 		suite.Equal(int64(3600), result.MediaDuration)
 		suite.Equal(int64(1), result.ID)
+	})
+
+	suite.Run("SuccessfulDownloadDeletesOldEpisodes", func() {
+		// Arrange
+		suite.service.cfg.FeedMaxEpisodes = 1
+		oldEpisode := &domain.Episode{
+			ID:            10,
+			MediaFile:     "download-old.mp3",
+			ThumbnailFile: "download-old.jpg",
+			OriginalURL:   "https://example.com/old",
+		}
+		suite.Require().NoError(os.WriteFile(suite.publicFile(oldEpisode.MediaFile), []byte("media"), 0644))
+		suite.Require().NoError(os.WriteFile(suite.publicFile(oldEpisode.ThumbnailFile), []byte("thumb"), 0644))
+
+		suite.mockStore.On("EpisodeGetByUrl", suite.ctx, req.Url).Return([]*domain.Episode{}, nil)
+		suite.mockPlatform.On("ID").Return("test-platform")
+		suite.mockPlatform.On("Match", req).Return(true)
+		suite.mockPlatform.On("Download", mock.AnythingOfType("*context.timerCtx"), req).Return(&domain.Episode{
+			Title:       "New Episode",
+			MediaFile:   "new.mp3",
+			MediaType:   domain.MediaMp3,
+			OriginalURL: req.Url,
+		}, nil)
+		suite.mockStore.On("EpisodeCreate", suite.ctx, mock.AnythingOfType("*domain.Episode")).
+			Return(nil).Run(func(args mock.Arguments) {
+			episode := args.Get(1).(*domain.Episode)
+			episode.ID = 11
+		})
+		suite.mockStore.On("EpisodeCount", suite.ctx).Return(2, nil)
+		suite.mockStore.On("EpisodeGetOldest", suite.ctx, 1).Return([]*domain.Episode{oldEpisode}, nil)
+		suite.mockStore.On("EpisodeDelete", suite.ctx, oldEpisode.ID).Return(nil)
+
+		// Act
+		result, err := suite.service.Download(suite.ctx, req)
+
+		// Assert
+		suite.NoError(err)
+		suite.NotNil(result)
+		suite.Equal(int64(11), result.ID)
+		suite.NoFileExists(suite.publicFile(oldEpisode.MediaFile))
+		suite.NoFileExists(suite.publicFile(oldEpisode.ThumbnailFile))
 	})
 
 	suite.Run("NoMatchingPlatform", func() {
@@ -418,6 +487,7 @@ func (suite *TestEpisodeServiceSuite) TestFindPlatform() {
 			episode := args.Get(1).(*domain.Episode)
 			episode.ID = 1
 		})
+		suite.mockStore.On("EpisodeCount", suite.ctx).Return(1, nil)
 
 		// Act
 		result, err := service.Download(suite.ctx, req)
@@ -452,6 +522,54 @@ func (suite *TestEpisodeServiceSuite) TestFindPlatform() {
 		suite.Nil(result)
 		suite.Equal(domain.ErrNoMatchingPlatform, err)
 	})
+}
+
+func (suite *TestEpisodeServiceSuite) TestEnforceFeedMaxEpisodes() {
+	suite.Run("NoLimit", func() {
+		// Arrange
+		suite.service.cfg.FeedMaxEpisodes = 0
+		suite.mockStore.On("EpisodeCount", suite.ctx).Return(3, nil)
+
+		// Act
+		err := suite.service.enforceFeedMaxEpisodes(suite.ctx)
+
+		// Assert
+		suite.NoError(err)
+	})
+
+	suite.Run("StoreCountError", func() {
+		// Arrange
+		expectedErr := errors.New("count failed")
+		suite.service.cfg.FeedMaxEpisodes = 1
+		suite.mockStore.On("EpisodeCount", suite.ctx).Return(0, expectedErr)
+
+		// Act
+		err := suite.service.enforceFeedMaxEpisodes(suite.ctx)
+
+		// Assert
+		suite.Error(err)
+		suite.True(errors.Is(err, expectedErr))
+	})
+
+	suite.Run("DeleteFileError", func() {
+		// Arrange
+		suite.service.cfg.FeedMaxEpisodes = 1
+		oldEpisode := &domain.Episode{ID: 1, MediaFile: "../unsafe.mp3"}
+		suite.mockStore.On("EpisodeCount", suite.ctx).Return(2, nil)
+		suite.mockStore.On("EpisodeGetOldest", suite.ctx, 1).Return([]*domain.Episode{oldEpisode}, nil)
+		suite.mockStore.On("EpisodeDelete", suite.ctx, oldEpisode.ID).Return(nil)
+
+		// Act
+		err := suite.service.enforceFeedMaxEpisodes(suite.ctx)
+
+		// Assert
+		suite.Error(err)
+		suite.Contains(err.Error(), "unsafe public file path")
+	})
+}
+
+func (suite *TestEpisodeServiceSuite) publicFile(filename string) string {
+	return suite.publicDir + string(os.PathSeparator) + filename
 }
 
 // TestValidateRequest tests the validateRequest method

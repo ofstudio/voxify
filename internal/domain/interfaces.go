@@ -52,4 +52,8 @@ type Store interface {
 	EpisodeCount(ctx context.Context) (int, error)
 	// EpisodeGetByUrl returns episodes matching the given original or canonical URL.
 	EpisodeGetByUrl(ctx context.Context, url string) ([]*Episode, error)
+	// EpisodeGetOldest returns the oldest episodes from the store.
+	EpisodeGetOldest(ctx context.Context, limit int) ([]*Episode, error)
+	// EpisodeDelete deletes an episode from the store.
+	EpisodeDelete(ctx context.Context, id int64) error
 }

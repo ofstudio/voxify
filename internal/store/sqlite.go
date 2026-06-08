@@ -213,6 +213,73 @@ func (s *SQLiteStore) EpisodeGetByUrl(ctx context.Context, url string) ([]*domai
 	return episodes, nil
 }
 
+// EpisodeGetOldest returns the oldest episodes from the store.
+func (s *SQLiteStore) EpisodeGetOldest(ctx context.Context, limit int) ([]*domain.Episode, error) {
+	query := `
+		SELECT id, title, description, thumbnail_file, media_file,
+			   media_duration, media_size, media_type, author, original_url, canonical_url, created_at
+		FROM episodes
+		ORDER BY created_at ASC
+		LIMIT ?`
+
+	rows, err := s.execer.QueryContext(ctx, query, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query oldest episodes: %w", err)
+	}
+	//goland:noinspection GoUnhandledErrorResult
+	defer rows.Close()
+
+	var episodes []*domain.Episode
+	for rows.Next() {
+		episode := &domain.Episode{}
+		var mediaType string
+		err = rows.Scan(
+			&episode.ID,
+			&episode.Title,
+			&episode.Description,
+			&episode.ThumbnailFile,
+			&episode.MediaFile,
+			&episode.MediaDuration,
+			&episode.MediaSize,
+			&mediaType,
+			&episode.Author,
+			&episode.OriginalURL,
+			&episode.CanonicalURL,
+			&episode.CreatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan episode: %w", err)
+		}
+		episode.MediaType = domain.MediaType(mediaType)
+		episodes = append(episodes, episode)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating over episodes: %w", err)
+	}
+
+	return episodes, nil
+}
+
+// EpisodeDelete deletes an episode from the store.
+func (s *SQLiteStore) EpisodeDelete(ctx context.Context, id int64) error {
+	query := `DELETE FROM episodes WHERE id = ?`
+
+	result, err := s.execer.ExecContext(ctx, query, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete episode: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get deleted episode count: %w", err)
+	}
+	if rowsAffected == 0 {
+		return fmt.Errorf("episode not found: %d", id)
+	}
+	return nil
+}
+
 // execer defines the interface for executing SQL queries and commands.
 // It abstracts the common database operations that can be performed
 // on both regular database connections and transactions.

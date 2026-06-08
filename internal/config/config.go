@@ -43,16 +43,17 @@ type Settings struct {
 	FFMpegPath string `env:"FFMPEG_PATH"` // Path to ffmpeg executable
 
 	// RSS feed configuration
-	FeedFileName    string   `env:"FEED_FILENAME"`    // Name of the RSS feed file (will be created in PublicDir)
-	FeedTitle       string   `env:"FEED_TITLE"`       // Title of the RSS feed
-	FeedDescription string   `env:"FEED_DESC"`        // Description of the RSS feed
-	FeedImage       string   `env:"FEED_IMAGE"`       // URL of the RSS feed cover image
-	FeedLanguage    string   `env:"FEED_LANGUAGE"`    // Language of the RSS feed (e.g., en)
-	FeedCategories  []string `env:"FEED_CATEGORIES"`  // Categories of the RSS feed
-	FeedCategories2 []string `env:"FEED_CATEGORIES2"` // Additional categories of the RSS feed
-	FeedCategories3 []string `env:"FEED_CATEGORIES3"` // Additional categories of the RSS feed
-	FeedIsExplicit  bool     `env:"FEED_IS_EXPLICIT"` // Whether the feed contains explicit content
-	FeedAuthor      string   `env:"FEED_AUTHOR"`      // Author of the RSS feed
-	FeedLink        string   `env:"FEED_LINK"`        // Link to the website of the RSS feed
-	FeedKeywords    string   `env:"FEED_KEYWORDS"`    // Comma-separated keywords for the RSS feed
+	FeedFileName    string   `env:"FEED_FILENAME"`     // Name of the RSS feed file (will be created in PublicDir)
+	FeedTitle       string   `env:"FEED_TITLE"`        // Title of the RSS feed
+	FeedDescription string   `env:"FEED_DESC"`         // Description of the RSS feed
+	FeedImage       string   `env:"FEED_IMAGE"`        // URL of the RSS feed cover image
+	FeedLanguage    string   `env:"FEED_LANGUAGE"`     // Language of the RSS feed (e.g., en)
+	FeedCategories  []string `env:"FEED_CATEGORIES"`   // Categories of the RSS feed
+	FeedCategories2 []string `env:"FEED_CATEGORIES2"`  // Additional categories of the RSS feed
+	FeedCategories3 []string `env:"FEED_CATEGORIES3"`  // Additional categories of the RSS feed
+	FeedIsExplicit  bool     `env:"FEED_IS_EXPLICIT"`  // Whether the feed contains explicit content
+	FeedAuthor      string   `env:"FEED_AUTHOR"`       // Author of the RSS feed
+	FeedLink        string   `env:"FEED_LINK"`         // Link to the website of the RSS feed
+	FeedKeywords    string   `env:"FEED_KEYWORDS"`     // Comma-separated keywords for the RSS feed
+	FeedMaxEpisodes int      `env:"FEED_MAX_EPISODES"` // Maximum number of episodes to keep in the feed (0 means no limit)
 }

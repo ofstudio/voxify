@@ -436,6 +436,131 @@ func (_c *MockStore_EpisodeGetByUrl_Call) RunAndReturn(run func(ctx context.Cont
 	return _c
 }
 
+// EpisodeGetOldest provides a mock function for the type MockStore
+func (_mock *MockStore) EpisodeGetOldest(ctx context.Context, limit int) ([]*domain.Episode, error) {
+	ret := _mock.Called(ctx, limit)
+
+	if len(ret) == 0 {
+		panic("no return value specified for EpisodeGetOldest")
+	}
+
+	var r0 []*domain.Episode
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int) ([]*domain.Episode, error)); ok {
+		return returnFunc(ctx, limit)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int) []*domain.Episode); ok {
+		r0 = returnFunc(ctx, limit)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*domain.Episode)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, int) error); ok {
+		r1 = returnFunc(ctx, limit)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockStore_EpisodeGetOldest_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'EpisodeGetOldest'
+type MockStore_EpisodeGetOldest_Call struct {
+	*mock.Call
+}
+
+// EpisodeGetOldest is a helper method to define mock.On call
+//   - ctx context.Context
+//   - limit int
+func (_e *MockStore_Expecter) EpisodeGetOldest(ctx interface{}, limit interface{}) *MockStore_EpisodeGetOldest_Call {
+	return &MockStore_EpisodeGetOldest_Call{Call: _e.mock.On("EpisodeGetOldest", ctx, limit)}
+}
+
+func (_c *MockStore_EpisodeGetOldest_Call) Run(run func(ctx context.Context, limit int)) *MockStore_EpisodeGetOldest_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 int
+		if args[1] != nil {
+			arg1 = args[1].(int)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockStore_EpisodeGetOldest_Call) Return(episodes []*domain.Episode, err error) *MockStore_EpisodeGetOldest_Call {
+	_c.Call.Return(episodes, err)
+	return _c
+}
+
+func (_c *MockStore_EpisodeGetOldest_Call) RunAndReturn(run func(ctx context.Context, limit int) ([]*domain.Episode, error)) *MockStore_EpisodeGetOldest_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// EpisodeDelete provides a mock function for the type MockStore
+func (_mock *MockStore) EpisodeDelete(ctx context.Context, id int64) error {
+	ret := _mock.Called(ctx, id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for EpisodeDelete")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int64) error); ok {
+		r0 = returnFunc(ctx, id)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockStore_EpisodeDelete_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'EpisodeDelete'
+type MockStore_EpisodeDelete_Call struct {
+	*mock.Call
+}
+
+// EpisodeDelete is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id int64
+func (_e *MockStore_Expecter) EpisodeDelete(ctx interface{}, id interface{}) *MockStore_EpisodeDelete_Call {
+	return &MockStore_EpisodeDelete_Call{Call: _e.mock.On("EpisodeDelete", ctx, id)}
+}
+
+func (_c *MockStore_EpisodeDelete_Call) Run(run func(ctx context.Context, id int64)) *MockStore_EpisodeDelete_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 int64
+		if args[1] != nil {
+			arg1 = args[1].(int64)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockStore_EpisodeDelete_Call) Return(err error) *MockStore_EpisodeDelete_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockStore_EpisodeDelete_Call) RunAndReturn(run func(ctx context.Context, id int64) error) *MockStore_EpisodeDelete_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Rollback provides a mock function for the type MockStore
 func (_mock *MockStore) Rollback() error {
 	ret := _mock.Called()

@@ -351,6 +351,70 @@ func (suite *TestSQLiteStoreSuite) TestEpisodeCount() {
 	})
 }
 
+func (suite *TestSQLiteStoreSuite) TestEpisodeGetOldest() {
+	// Arrange
+	for i := 1; i <= 3; i++ {
+		_, err := suite.db.ExecContext(suite.ctx, `
+			INSERT INTO episodes (title, description, thumbnail_file, media_file, media_type, author, original_url, canonical_url, created_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`,
+			fmt.Sprintf("Ep %d", i),
+			fmt.Sprintf("Description %d", i),
+			fmt.Sprintf("thumb%d.jpg", i),
+			fmt.Sprintf("ep%d.mp3", i),
+			"audio/mpeg",
+			fmt.Sprintf("author%d", i),
+			fmt.Sprintf("https://example.com/%d", i),
+			fmt.Sprintf("https://example.com/%d", i),
+			fmt.Sprintf("2026-01-0%d 00:00:00", i),
+		)
+		suite.Require().NoError(err)
+	}
+
+	// Act
+	episodes, err := suite.store.EpisodeGetOldest(suite.ctx, 2)
+
+	// Assert
+	suite.Require().NoError(err)
+	suite.Len(episodes, 2)
+	suite.Equal("Ep 1", episodes[0].Title)
+	suite.Equal("Ep 2", episodes[1].Title)
+}
+
+func (suite *TestSQLiteStoreSuite) TestEpisodeDelete() {
+	suite.Run("Success", func() {
+		// Arrange
+		episode := &domain.Episode{
+			Title:        "Deleted Episode",
+			MediaFile:    "deleted.mp3",
+			MediaType:    "audio/mpeg",
+			Author:       "Author",
+			OriginalURL:  "https://example.com/deleted",
+			CanonicalURL: "https://example.com/deleted",
+		}
+		err := suite.store.EpisodeCreate(suite.ctx, episode)
+		suite.Require().NoError(err)
+
+		// Act
+		err = suite.store.EpisodeDelete(suite.ctx, episode.ID)
+
+		// Assert
+		suite.Require().NoError(err)
+		count, err := suite.store.EpisodeCount(suite.ctx)
+		suite.Require().NoError(err)
+		suite.Equal(0, count)
+	})
+
+	suite.Run("NotFound", func() {
+		// Act
+		err := suite.store.EpisodeDelete(suite.ctx, 404)
+
+		// Assert
+		suite.Error(err)
+		suite.Contains(err.Error(), "episode not found")
+	})
+}
+
 // Test Transaction methods
 
 func (suite *TestSQLiteStoreSuite) TestBegin() {

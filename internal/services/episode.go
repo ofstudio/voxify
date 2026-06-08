@@ -6,7 +6,10 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"os"
+	"path/filepath"
 	"regexp"
+	"strings"
 
 	"github.com/ofstudio/voxify/internal/config"
 	"github.com/ofstudio/voxify/internal/domain"
@@ -55,6 +58,10 @@ func (s *EpisodeService) Init(ctx context.Context) error {
 		return fmt.Errorf("failed to clean download directory: %w", err)
 	}
 
+	if err := s.enforceFeedMaxEpisodes(ctx); err != nil {
+		return fmt.Errorf("failed to enforce feed episode limit: %w", err)
+	}
+
 	return nil
 }
 
@@ -99,7 +106,75 @@ func (s *EpisodeService) Download(ctx context.Context, req domain.DownloadReques
 
 	s.log.Info("[episode service] episode downloaded",
 		"platform", platform.ID(), "request", req.LogValue(), "episode", episode.LogValue())
+
+	if err = s.enforceFeedMaxEpisodes(ctx); err != nil {
+		return nil, fmt.Errorf("failed to enforce feed episode limit: %w", err)
+	}
+
 	return episode, nil
+}
+
+func (s *EpisodeService) enforceFeedMaxEpisodes(ctx context.Context) error {
+	count, err := s.store.EpisodeCount(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to count episodes: %w", err)
+	}
+
+	if s.cfg.FeedMaxEpisodes <= 0 {
+		s.log.Info("[episode service] feed episode limit disabled", "episodes_count", count)
+		return nil
+	}
+
+	s.log.Info("[episode service] checking feed episode limit",
+		"feed_max_episodes", s.cfg.FeedMaxEpisodes, "episodes_count", count)
+
+	overflow := count - s.cfg.FeedMaxEpisodes
+	if overflow <= 0 {
+		return nil
+	}
+
+	episodes, err := s.store.EpisodeGetOldest(ctx, overflow)
+	if err != nil {
+		return fmt.Errorf("failed to get oldest episodes: %w", err)
+	}
+
+	for _, episode := range episodes {
+		if err = s.store.EpisodeDelete(ctx, episode.ID); err != nil {
+			return fmt.Errorf("failed to delete episode: %w", err)
+		}
+		if err = s.deleteEpisodeFiles(episode); err != nil {
+			return fmt.Errorf("failed to delete episode files: %w", err)
+		}
+		s.log.Info("[episode service] old episode deleted",
+			"feed_max_episodes", s.cfg.FeedMaxEpisodes, "episode", episode.LogValue())
+	}
+
+	return nil
+}
+
+func (s *EpisodeService) deleteEpisodeFiles(episode *domain.Episode) error {
+	for _, filename := range []string{episode.MediaFile, episode.ThumbnailFile} {
+		if filename == "" {
+			continue
+		}
+		if err := s.deletePublicFile(filename); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *EpisodeService) deletePublicFile(filename string) error {
+	clean := filepath.Clean(filename)
+	if clean == "." || filepath.IsAbs(clean) || strings.HasPrefix(clean, ".."+string(filepath.Separator)) || clean == ".." {
+		return fmt.Errorf("unsafe public file path: %s", filename)
+	}
+
+	path := filepath.Join(s.cfg.PublicDir, clean)
+	if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("failed to remove public file %s: %w", filename, err)
+	}
+	return nil
 }
 
 func (s *EpisodeService) findPlatform(req domain.DownloadRequest) domain.Platform {
