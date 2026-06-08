@@ -1,9 +1,11 @@
+.git
 .idea
 playground
 doc
 assets
 .run
 .env*
+.DS_Store
 .dockerignore
 .gitignore
 .mockery.yaml

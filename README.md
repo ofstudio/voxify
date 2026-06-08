@@ -22,6 +22,10 @@ send YouTube links or other supported video URLs to the Telegram bot, and it wil
 The bot maintains a single RSS feed for your deployment, collecting episodes from the allowed users you configure. Perfect for listening to educational content, tech talks, interviews, or any video content during commutes,
 workouts, or while multitasking.
 
+Voxify protects bot commands with Telegram allowed users, but the generated RSS feed, landing page and media files are
+public by design. Use an unguessable URL or add authentication at your reverse proxy if you do not want the feed to be
+discoverable by anyone who knows the public URL.
+
 ## Usage
 
 1. **Get your Telegram user ID**: Message [@userinfobot](https://t.me/userinfobot) on Telegram to find your user ID
