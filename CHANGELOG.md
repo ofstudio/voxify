@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v1.1.0] - 2026-06-08
+
+### Added
+
+- Optional `FEED_MAX_EPISODES` setting to keep only the newest episodes in the feed.
+
+### Changed
+
+- When the feed episode limit is exceeded, Voxify permanently deletes the oldest episode records and associated media/thumbnail files on startup and after new downloads.
+
 ## [v1.0.3] - 2026-02-18
 
 ### Changed
@@ -69,7 +79,9 @@ Initial public release (tagged `v0.0.1`).
 
 ---
 
-[Unreleased]: https://github.com/ofstudio/voxify/compare/v1.0.3...HEAD
+[Unreleased]: https://github.com/ofstudio/voxify/compare/v1.1.0...HEAD
+
+[v1.1.0]: https://github.com/ofstudio/voxify/compare/v1.0.3...v1.1.0
 
 [v1.0.3]: https://github.com/ofstudio/voxify/compare/v1.0.2...v1.0.3
 

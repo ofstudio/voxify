@@ -16,6 +16,7 @@ send YouTube links or other supported video URLs to the Telegram bot, and it wil
 - Generate episode thumbnails and metadata
 - Add episodes to your personal RSS podcast feed
 - Create a landing page with episode cards
+- Optionally keep only the newest episodes and permanently remove older media files
 - Make the content accessible through any podcast player
 
 The bot maintains a single RSS feed for your deployment, collecting episodes from the allowed users you configure. Perfect for listening to educational content, tech talks, interviews, or any video content during commutes,
@@ -123,6 +124,7 @@ Check [packages](https://github.com/ofstudio/voxify/pkgs/container/voxify) for t
 | `FEED_AUTHOR`            | *Optional.* Author of the RSS feed. Example: `John Doe`                                                                                                                         |
 | `FEED_LINK`              | *Optional.* Link to the website of the RSS feed. Default: `https://github.com/ofstudio/voxify`                                                                                  |
 | `FEED_KEYWORDS`          | *Optional.* Comma-separated keywords for the RSS feed. Example: `podcast,tech,news,interviews`                                                                                  |
+| `FEED_MAX_EPISODES`      | *Optional.* Maximum number of newest episodes to keep. Older episodes and their media/thumbnail files are permanently deleted. Default: `0` (no limit)                          |
 
 ## Acknowledgments
 
