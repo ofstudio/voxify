@@ -4,9 +4,11 @@ ARG APP_VERSION=latest
 ARG DATA_DIR=/data
 
 # Build stage
-FROM golang:1.25-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.25-alpine AS builder
 ARG APP_MODULE
 ARG APP_VERSION
+ARG TARGETOS
+ARG TARGETARCH
 
 # Copy source code and download dependencies
 WORKDIR /src
@@ -18,7 +20,7 @@ COPY . .
 RUN go test ./...
 
 # Build the application
-RUN go build -trimpath \
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath \
       -ldflags "-s -w -X ${APP_MODULE}/internal/config.version=${APP_VERSION}" \
       -o /build/voxify-bot ./cmd/voxify-bot
 
