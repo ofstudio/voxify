@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v1.1.1] - 2026-06-09
+
+### Changed
+
+- Docker multi-platform builds now run tests in the native builder stage and cross-compile the application binary for the target platform.
+
+### Fixed
+
+- Public RSS and landing page files are now published with readable permissions for reverse proxies running under a different user.
+
 ## [v1.1.0] - 2026-06-08
 
 ### Added
@@ -83,7 +93,9 @@ Initial public release (tagged `v0.0.1`).
 
 ---
 
-[Unreleased]: https://github.com/ofstudio/voxify/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/ofstudio/voxify/compare/v1.1.1...HEAD
+
+[v1.1.1]: https://github.com/ofstudio/voxify/compare/v1.1.0...v1.1.1
 
 [v1.1.0]: https://github.com/ofstudio/voxify/compare/v1.0.3...v1.1.0
 
