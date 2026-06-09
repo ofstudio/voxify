@@ -215,7 +215,7 @@ func (s *FeedService) saveFeed(feed *feedcast.Feed) error {
 	if err = file.Close(); err != nil {
 		return fmt.Errorf("failed to close feed file: %w", err)
 	}
-	if err = os.Rename(tmpPath, feedPath); err != nil {
+	if err = s.publishTempFile(tmpPath, feedPath); err != nil {
 		return fmt.Errorf("failed to replace feed file: %w", err)
 	}
 
@@ -297,7 +297,7 @@ func (s *FeedService) buildLanding(ctx context.Context, episodes []*domain.Episo
 	if err = file.Close(); err != nil {
 		return fmt.Errorf("failed to close landing page file: %w", err)
 	}
-	if err = os.Rename(tmpPath, landingPath); err != nil {
+	if err = s.publishTempFile(tmpPath, landingPath); err != nil {
 		return fmt.Errorf("failed to replace landing page file: %w", err)
 	}
 
@@ -311,4 +311,11 @@ func (s *FeedService) createTempFile(path string) (*os.File, string, error) {
 		return nil, "", err
 	}
 	return file, file.Name(), nil
+}
+
+func (s *FeedService) publishTempFile(tmpPath, path string) error {
+	if err := os.Chmod(tmpPath, 0644); err != nil {
+		return err
+	}
+	return os.Rename(tmpPath, path)
 }

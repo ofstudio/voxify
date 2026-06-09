@@ -77,6 +77,12 @@ func (suite *TestFeedServiceSuite) SetupSubTest() {
 	suite.NoError(templates.Init(suite.ctx))
 }
 
+func (suite *TestFeedServiceSuite) fileModeIs(path string, expected os.FileMode) {
+	info, err := os.Stat(path)
+	suite.Require().NoError(err)
+	suite.Equal(expected, info.Mode().Perm())
+}
+
 // TestNewFeedService tests the constructor
 func (suite *TestFeedServiceSuite) TestNewFeedService() {
 	// Act
@@ -103,6 +109,7 @@ func (suite *TestFeedServiceSuite) TestBuild() {
 		suite.Require().NoError(err)
 		landingPath := filepath.Join(suite.cfg.PublicDir, "index.html")
 		suite.FileExists(landingPath)
+		suite.fileModeIs(landingPath, 0644)
 
 		// 2) Landing page must contain FeedTitle and FeedDescription
 		content, readErr := os.ReadFile(landingPath)
@@ -170,6 +177,7 @@ func (suite *TestFeedServiceSuite) TestBuild() {
 		// Verify feed file was created
 		feedPath := filepath.Join(suite.cfg.PublicDir, suite.cfg.FeedFileName)
 		suite.FileExists(feedPath)
+		suite.fileModeIs(feedPath, 0644)
 
 		// Verify feed content contains episodes
 		content, err := os.ReadFile(feedPath)
