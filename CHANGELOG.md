@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v1.1.4] - 2026-09-24
+
+### Fixed
+
+- Fixed episode cards overflowing narrow screens by allowing grid columns to shrink and long text and metadata to wrap.
+
+### Added
+
+- Added developer documentation covering product behavior, architecture, configuration, and operations.
+
 ## [v1.1.3] - 2026-08-28
 
 ### Changed
@@ -105,7 +115,9 @@ Initial public release (tagged `v0.0.1`).
 
 ---
 
-[Unreleased]: https://github.com/ofstudio/voxify/compare/v1.1.3...HEAD
+[Unreleased]: https://github.com/ofstudio/voxify/compare/v1.1.4...HEAD
+
+[v1.1.4]: https://github.com/ofstudio/voxify/compare/v1.1.3...v1.1.4
 
 [v1.1.3]: https://github.com/ofstudio/voxify/compare/v1.1.2...v1.1.3
 
