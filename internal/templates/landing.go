@@ -191,7 +191,7 @@ const landingTemplateHTML =
         .episodes {
             margin: 26px 0 14px;
             display: grid;
-            grid-template-columns: 1fr;
+            grid-template-columns: minmax(0, 1fr);
             gap: 16px;
         }
 
@@ -212,7 +212,7 @@ const landingTemplateHTML =
 
         @media (min-width: 760px) {
             .episodes {
-                grid-template-columns: 1fr 1fr;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
             }
         }
 
@@ -222,12 +222,17 @@ const landingTemplateHTML =
             box-shadow: var(--shadow-1);
             padding: 12px;
             display: grid;
-            grid-template-columns: 110px 1fr;
+            grid-template-columns: 110px minmax(0, 1fr);
+            overflow-wrap: anywhere;
             gap: 14px;
             text-decoration: none;
             color: inherit;
             transition: transform .06s ease, box-shadow .2s ease;
             border: 1px solid var(--border-soft);
+        }
+
+        .card > div {
+            min-width: 0;
         }
 
         .card:hover {
@@ -263,6 +268,7 @@ const landingTemplateHTML =
 
         .card .row {
             display: flex;
+            flex-wrap: wrap;
             gap: 10px;
             color: var(--muted);
             font-size: 12px;
