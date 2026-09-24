@@ -20,3 +20,6 @@ playground
 # Go workspace file
 go.work
 go.work.sum
+
+# Keep the shared Makefile visible despite local ignore rules.
+!/Makefile
