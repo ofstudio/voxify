@@ -130,6 +130,13 @@ Check [packages](https://github.com/ofstudio/voxify/pkgs/container/voxify) for t
 | `FEED_KEYWORDS`          | *Optional.* Comma-separated keywords for the RSS feed. Example: `podcast,tech,news,interviews`                                                                                  |
 | `FEED_MAX_EPISODES`      | *Optional.* Maximum number of newest episodes to keep. Older episodes and their media/thumbnail files are permanently deleted. Default: `0` (no limit)                          |
 
+## Documentation
+
+- [Product and System Analysis](docs/analysis.md) — user scenarios, processing rules, data model, and current limitations.
+- [Architecture and Operations](docs/architecture.md) — components, execution flow, storage, configuration, deployment, and verification.
+
+These developer documents describe the current implementation and link to its source and tests.
+
 ## Acknowledgments
 
 - Built with [Go](https://golang.org/)
